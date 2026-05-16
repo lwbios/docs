@@ -1,95 +1,59 @@
 ---
-title: 'Development'
-description: 'Preview changes locally to update your docs'
-icon: 'terminal'
+title: "Autenticação de API"
+description: "Autentique solicitações de pagamentos com chaves de API com escopo definido. Envie sua chave secreta via cabeçalho HTTP. Chaves ausentes ou inválidas retornam um erro 401."
+icon: "terminal"
 ---
 
-<Info>
-  **Prerequisites**:
-  - Node.js version 19 or higher
-  - A docs repository with a `docs.json` file
-</Info>
+## Encontrando sua chave de API
 
-Follow these steps to install and run Mintlify on your operating system.
+Na Valora, as chaves de API são vinculadas a sua conta. Uma chave de API é gerada automaticamente assim que você cria sua conta. Para encontrar sua chave:
 
 <Steps>
-<Step title="Install the Mintlify CLI">
-
-```bash
-npm i -g mint
-```
-</Step>
-
-<Step title="Preview locally">
-
-Navigate to your docs directory where your `docs.json` file is located, and run the following command:
-
-```bash
-mint dev
-```
-
-A local preview of your documentation will be available at `http://localhost:3000`.
-
-</Step>
+  <Step title="Faça login no Dashboard">
+    Acesse o <u>Dashboard da Valora</u> e faça login.
+  </Step>
+  <Step title="API aberta e webhooks">
+    Acesse a seção API e Webhooks na barra lateral esquerda.
+  </Step>
+  <Step title="Copie suas chaves">
+    Sua chave de API e chave secreta do webhook serão exibidas aqui. Copie-as conforme necessário.
+  </Step>
 </Steps>
 
-## Custom ports
+<Card title="Sua chave de API é um segredo — trate-a como uma senha." type="warning">
+  Ela fornece acesso total à API em nome da sua aplicação. Nunca a exponha no código do frontend, em repositórios públicos ou em pacotes do lado do cliente. Mantenha-a sempre restrita ao lado do servidor.
+</Card>
 
-By default, Mintlify uses port 3000. You can customize the port Mintlify runs on by using the `--port` flag. For example, to run Mintlify on port 3333, use this command:
+## Fazendo solicitações autenticadas
 
-```bash
-mint dev --port 3333
+Para autenticar uma solicitação de API, inclua sua chave secreta de API no `x-api-key`cabeçalho HTTP.Segue um exemplo de uma requisição autenticada para o `Pix `endpoint:
+
+<RequestExample>
+
+```text cURL
+curl --request POST \
+     --url https://prod.api.valora.cash/v1/pixQrCode/ \
+     --header 'accept: application/json' \
+     --header 'content-type: application/json' \
+     --header 'x-api-key: YOUR_API_KEY' \
+     --data '
+{
+  "amount": "1",
+}
 ```
 
-If you attempt to run Mintlify on a port that's already in use, it will use the next available port:
+</RequestExample>
 
-```md
-Port 3000 is already in use. Trying 3001 instead.
+## Tratamento de erros
+
+Se a sua chave de API estiver ausente ou for inválida, a API retornará a `401 Unauthorized`seguinte resposta:
+
+```json
+{ 
+	"detail": "Invalid or missing API key"
+}
 ```
 
-## Mintlify versions
-
-Please note that each CLI release is associated with a specific version of Mintlify. If your local preview does not align with the production version, please update the CLI:
-
-```bash
-npm mint update
-```
-
-## Validating links
-
-The CLI can assist with validating links in your documentation. To identify any broken links, use the following command:
-
-```bash
-mint broken-links
-```
-
-## Deployment
-
-If the deployment is successful, you should see the following:
-
-<Frame>
-  <img src="/images/checks-passed.png" alt="Screenshot of a deployment confirmation message that says All checks have passed." style={{ borderRadius: '0.5rem' }} />
-</Frame>
-
-## Code formatting
-
-We suggest using extensions on your IDE to recognize and format MDX. If you're a VSCode user, consider the [MDX VSCode extension](https://marketplace.visualstudio.com/items?itemName=unifiedjs.vscode-mdx) for syntax highlighting, and [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode) for code formatting.
-
-## Troubleshooting
-
-<AccordionGroup>
-  <Accordion title='Error: Could not load the "sharp" module using the darwin-arm64 runtime'>
-
-    This may be due to an outdated version of node. Try the following:
-    1. Remove the currently-installed version of the CLI: `npm remove -g mint`
-    2. Upgrade to Node v19 or higher.
-    3. Reinstall the CLI: `npm i -g mint`
-  </Accordion>
-
-  <Accordion title="Issue: Encountering an unknown error">
-  
-    Solution: Go to the root of your device and delete the `~/.mintlify` folder. Then run `mint dev` again.
-  </Accordion>
-</AccordionGroup>
-
-Curious about what changed in the latest CLI version? Check out the [CLI changelog](https://www.npmjs.com/package/mintlify?activeTab=versions).
+<Card type="tip">
+  Se você receber um `401`erro, verifique novamente se está usando a chave de API correta para o aplicativo certo e se ela não foi regenerada.
+</Card>
