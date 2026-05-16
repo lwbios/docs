@@ -32,28 +32,6 @@ A Valora Payments é a plataforma completa para lançar, escalar e monetizar seu
   </Card>
 </Columns>
 
-## Create beautiful pages
-
-Everything you need to create world-class documentation.
-
-<Columns cols={2}>
-  <Card title="Write with MDX" icon="pen-fancy" href="/essentials/markdown">
-    Use MDX to style your docs pages.
-  </Card>
-
-  <Card title="Code samples" icon="code" href="/essentials/code">
-    Add sample code to demonstrate how to use your product.
-  </Card>
-
-  <Card title="Images" icon="image" href="/essentials/images">
-    Display images and other media.
-  </Card>
-
-  <Card title="Reusable snippets" icon="recycle" href="/essentials/reusable-snippets">
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
-
 ## Guia de Início Rápido
 
 Comece a usar o Dodo Payments em apenas alguns passos.
@@ -72,19 +50,34 @@ Comece a usar o Dodo Payments em apenas alguns passos.
     2. Copie sua chave de API — mantenha-a apenas no servidor, nunca a exponha no código do frontend.
   </Step>
   <Step title="APIs independentes">
-    Acesse os endpoints diretamente do seu backend
+    Acesse os endpoints diretamente do seu backend.
+
+    | Ponto final | Propósito |
+    | --- | --- |
+    | `POST /v1/pixQrCode/` | Para a criação de transações Pix |
+    | `GET /v1/pixQrCode/[txid]/` | Para verificações de informações de transações Pix |
+    | `GET /v1/coins/list/` | Informações de quais crypto ativos estão disponíveis para transações crypto |
+    | `POST /v1/coins/sol/` | Criar transações crypto de Solana |
+    | `POST /v1/coins/sol/[asset]/` | Criar transações crypto em token espeicfico da rede solana |
+    | `GET /v1/coins/sol/[asset]/[reference]/` | Buscar informações de uma transação crypto |
   </Step>
   <Step title="Receba resultados em tempo real">
     A Valora envia eventos de webhook para o seu endpoint — sem necessidade de polling.
+
+    | Evento | Adicionar |
+    | --- | --- |
+    | <h3>`payment.confirmed`</h3> | Disparado quando um pagamento é confirmado — tanto Pix quanto Crypto |
+    | `payment.expired` | Disparado quando um pagamento expira |
+    | `payment.created` | Disparado quando um pagamento é criado |
+    | `payment.failed` | Disparado quando um pagamento galha |
   </Step>
 </Steps>
 
-## \
-Precisa de ajuda?
+## Precisa de Ajuda?
 
 <Columns cols={2}>
   <Column>
-    <Card title="Discord" icon="comment">
+    <Card title="Discord" icon="comment" href="https://discord.gg/AEjjVPUNFf">
       Resposta mais rápida — entre em contato conosco diretamente.
     </Card>
   </Column>
