@@ -18,11 +18,24 @@
         }
       ]
     },
-    "anchors": [
+    "tabs": [
       {
-        "anchor": "Documentação",
-        "icon": "book-open-cover",
-        "href": "https://mintlify.com/docs"
+        "tab": "Comece aqui",
+        "icon": "book-open",
+        "groups": [
+          {
+            "group": "Visão geral",
+            "pages": [
+              "introducao",
+              "quick-start",
+              "api-authentication"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Referência API",
+        "icon": "code"
       }
     ]
   },

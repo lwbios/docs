@@ -1,0 +1,43 @@
+---
+title: "Início rápido"
+---
+
+Comece a usar a Valora Payments em apenas alguns passos.
+
+<Steps>
+  <Step title="Crie sua conta Valora">
+    1. Acesse [dash.valora.cash](https://dash.valora.cash)
+    2. Cadastre-se com OAuth.
+    3. Finalize sua conta adicionando informações do seu negócio.
+  </Step>
+  <Step title="Configure o webhook e copie a chave da API.">
+    1. Adicione o URL do seu Webhook — a Valora envia atualizações de status aqui.
+    2. Copie sua chave de API — mantenha-a apenas no servidor, nunca a exponha no código do frontend.
+  </Step>
+  <Step title="APIs independentes">
+    Acesse os endpoints diretamente do seu backend
+
+    | Ponto final | Propósito |
+    | --- | --- |
+    | <h3>`POST /v1/pixQrCode`</h3> | Criar cobrança PIX |
+    | <h3>`POST /v1/coins/sol`</h3> | Criar pagamento em SOL nativo |
+    | <h3>`POST /v1/coins/sol/[asset]`</h3> | Criar pagamento SPL (USDT / USDC) |
+    | <h3>`GET /v1/coins/sol/[asset]/[txid]`</h3> | Consultar status do pagamento |
+  </Step>
+  <Step title="Receba resultados em tempo real">
+    A Valora envia eventos de webhook para o seu endpoint — sem necessidade de polling.
+
+    | Event | Acionar |
+    | --- | --- |
+    | <h3>`payment.created`</h3> | Pagamento criado |
+    | <h3>`payment.confirmed`</h3> | Pagamento confirmado |
+    | <h3>`payment.expired`</h3> | Pagamento expirado (crypto apenas) <br /> |
+    | <h3>`payment.failed`</h3> | Pagamento falhou |
+  </Step>
+</Steps>
+
+## Precisa de ajuda?
+
+<Card title="Discord" icon="comments" href="https://discord.gg/AEjjVPUNFf">
+  Resposta mais rápida — entre em contato conosco diretamente.
+</Card>
