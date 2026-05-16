@@ -3,9 +3,9 @@
   "theme": "mint",
   "name": "Welcome to Valora Payments - Valora Paymentes Dmentation",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#615fff",
+    "light": "#7c86ff",
+    "dark": "#4f39f6"
   },
   "favicon": "/favicon.svg",
   "navigation": {
@@ -17,7 +17,6 @@
             "group": "Getting started",
             "pages": [
               "index",
-              "quickstart",
               "development"
             ]
           },
@@ -80,17 +79,14 @@
           "icon": "book-open-cover"
         },
         {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
+          "anchor": "Dashboard Valora Payments",
+          "icon": "compass",
+          "href": "https://dash.valora.cash"
         }
       ]
     }
   },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
+  "logo": "/logo/light.svg",
   "navbar": {
     "links": [
       {
@@ -124,6 +120,7 @@
     }
   },
   "appearance": {
-    "default": "light"
+    "default": "light",
+    "strict": true
   }
 }
