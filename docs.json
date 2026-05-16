@@ -25,24 +25,14 @@
                 }
               ]
             },
-            "tabs": [
+            "anchors": [
               {
-                "tab": "Comece aqui",
-                "icon": "book-open",
-                "groups": [
-                  {
-                    "group": "Visão geral",
-                    "pages": [
-                      "introducao",
-                      "quick-start",
-                      "api-authentication"
-                    ]
-                  }
-                ]
-              },
-              {
-                "tab": "Referência API",
-                "icon": "code"
+                "anchor": "Referêmcia da API",
+                "icon": "code",
+                "color": {
+                  "light": "#615fff",
+                  "dark": "#615fff"
+                }
               }
             ]
           }
