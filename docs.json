@@ -9,59 +9,22 @@
   },
   "favicon": "/favicon.svg",
   "navigation": {
-    "tabs": [
-      {
-        "tab": "Comece aqui",
-        "groups": [
-          {
-            "group": "Visão Geral",
-            "pages": [
-              "index",
-              "api-authentication"
-            ],
-            "icon": "compass"
-          }
-        ],
-        "icon": "book-bookmark"
-      },
-      {
-        "tab": "API reference",
-        "groups": [
-          {
-            "group": "API documentation",
-            "pages": [
-              "api-reference/introduction"
-            ]
-          },
-          {
-            "group": "Pix",
-            "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create"
-            ]
-          }
-        ],
-        "icon": "code"
-      }
-    ],
     "global": {
       "anchors": [
-        {
-          "anchor": "Documentação",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover",
-          "color": {
-            "light": "#",
-            "dark": "#"
-          }
-        },
         {
           "anchor": "Dashboard Valora",
           "icon": "compass",
           "href": "https://dash.valora.cash"
         }
       ]
-    }
+    },
+    "anchors": [
+      {
+        "anchor": "Documentação",
+        "icon": "book-open-cover",
+        "href": "https://mintlify.com/docs"
+      }
+    ]
   },
   "logo": "/logo/light.svg",
   "navbar": {
