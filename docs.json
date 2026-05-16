@@ -14,41 +14,15 @@
         "tab": "Comece aqui",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Visão Geral",
             "pages": [
               "index",
-              "development"
-            ]
-          },
-          {
-            "group": "Customization",
-            "pages": [
-              "essentials/settings",
-              "essentials/navigation"
-            ]
-          },
-          {
-            "group": "Writing content",
-            "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/components",
-              "essentials/reusable-snippets"
-            ]
-          },
-          {
-            "group": "Agent ready",
-            "pages": [
-              "agent-ready/prompt",
-              "agent-ready/visibility",
-              "agent-ready/contextual",
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
-            ]
+              "api-authentication"
+            ],
+            "icon": "compass"
           }
-        ]
+        ],
+        "icon": "book-bookmark"
       },
       {
         "tab": "API reference",
@@ -63,16 +37,11 @@
             "group": "Pix",
             "pages": [
               "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api-reference/endpoint/create"
             ]
-          },
-          {
-            "group": "Crypto",
-            "pages": []
           }
-        ]
+        ],
+        "icon": "code"
       }
     ],
     "global": {
@@ -87,7 +56,7 @@
           }
         },
         {
-          "anchor": "Dashboard Valora Payments",
+          "anchor": "Dashboard Valora",
           "icon": "compass",
           "href": "https://dash.valora.cash"
         }

@@ -1,7 +1,6 @@
 ---
 title: "Autenticação de API"
 description: "Autentique solicitações de pagamentos com chaves de API com escopo definido. Envie sua chave secreta via cabeçalho HTTP. Chaves ausentes ou inválidas retornam um erro 401."
-icon: "terminal"
 ---
 
 ## Encontrando sua chave de API
@@ -10,7 +9,7 @@ Na Valora, as chaves de API são vinculadas a sua conta. Uma chave de API é ger
 
 <Steps>
   <Step title="Faça login no Dashboard">
-    Acesse o <u>Dashboard da Valora</u> e faça login.
+    Acesse o [Dashboard da Valora](https://docs.valora.cash) e faça login.
   </Step>
   <Step title="API aberta e webhooks">
     Acesse a seção API e Webhooks na barra lateral esquerda.
@@ -30,7 +29,7 @@ Para autenticar uma solicitação de API, inclua sua chave secreta de API no `x-
 
 <RequestExample>
 
-```text cURL
+```shellscript cURL
 curl --request POST \
      --url https://prod.api.valora.cash/v1/pixQrCode/ \
      --header 'accept: application/json' \
@@ -55,5 +54,5 @@ Se a sua chave de API estiver ausente ou for inválida, a API retornará a `401 
 ```
 
 <Card type="tip">
-  Se você receber um `401`erro, verifique novamente se está usando a chave de API correta para o aplicativo certo e se ela não foi regenerada.
+  Se você receber um `401` erro, verifique novamente se está usando a chave de API correta para o aplicativo certo e se ela não foi regenerada.
 </Card>
