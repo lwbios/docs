@@ -1,54 +1,34 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
-icon: 'star'
+title: "Bem-vindo a Valora Payments"
+description: "A plataforma completa de pagamentos e faturamento para SaaS, IA e produtos digitais. Aceite pagamentos globalmente, configure modelos de faturamento flexíveis e monetize seu produto em minutos — tudo isso sem precisar construir sua própria infraestrutura."
+icon: "star"
 ---
 
-## Setting up
+## O que é Valora Payments?
 
-Get your documentation site up and running in minutes.
+A Valora Payments é a plataforma completa para lançar, escalar e monetizar seu negócio globalmente. Projetada para a nova geração de produtos digitais SaaS e de IA, gerenciamos tudo, desde pagamentos e faturamento até distribuição, sem a necessidade de engenharia adicional.
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
+<Card title="Start here" icon="rocket" horizontal href="/quickstart">
   Follow our three step quickstart guide.
 </Card>
 
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
+## Por que escolher a Valora Payments?
 
 <Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+  <Card title="Monetização mais rápida" icon="bolt-lightning" href="/development">
+    Comece a gerar receita em minutos, não em semanas.
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+
+  <Card title="Modelos de faturamento flexíveis" icon="arrows-repeat" href="/essentials/settings">
+    Receba sua monetização via Pix, Crypto, Cartão e outros.
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
+
+  <Card title="Set up navigation" icon="map" href="/essentials/navigation">
     Organize your docs to help users find what they need and succeed with your product.
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+
+  <Card title="Developer-First" icon="code" href="/api-reference/introduction">
+    APIs integrados para uma integração rápida e robusta.
   </Card>
 </Columns>
 
@@ -57,77 +37,57 @@ Design a docs site that looks great and empowers your users.
 Everything you need to create world-class documentation.
 
 <Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
+  <Card title="Write with MDX" icon="pen-fancy" href="/essentials/markdown">
     Use MDX to style your docs pages.
   </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
+
+  <Card title="Code samples" icon="code" href="/essentials/code">
     Add sample code to demonstrate how to use your product.
   </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
+
+  <Card title="Images" icon="image" href="/essentials/images">
     Display images and other media.
   </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
+
+  <Card title="Reusable snippets" icon="recycle" href="/essentials/reusable-snippets">
     Write once and reuse across your docs.
   </Card>
 </Columns>
 
-## Make your content agent ready
+## Guia de Início Rápido
 
-Make your docs work for humans and AI agents alike.
+Comece a usar o Dodo Payments em apenas alguns passos.
+
+<Steps>
+  <Step title="Crie sua conta">
+    Cadastre-se em [dash.valora.cash](http://dash.valora.cash) usando seu e-mail.
+  </Step>
+  <Step title="Acesse a seção de Integração">
+    Inicie a criação de uma nova chave de API
+  </Step>
+  <Step title="Configure o webhook e copie a chave da API.">
+    Acesse a seção **API e Webhooks** na barra lateral:
+
+    1. Adicione o URL do seu Webhook — a Valora envia atualizações de status aqui.
+    2. Copie sua chave de API — mantenha-a apenas no servidor, nunca a exponha no código do frontend.
+  </Step>
+  <Step title="APIs independentes">
+    Acesse os endpoints diretamente do seu backend
+  </Step>
+  <Step title="Receba resultados em tempo real">
+    A Valora envia eventos de webhook para o seu endpoint — sem necessidade de polling.
+  </Step>
+</Steps>
+
+## \
+Precisa de ajuda?
 
 <Columns cols={2}>
-  <Card
-    title="Prompt component"
-    icon="robot"
-    href="/agent-ready/prompt"
-  >
-    Embed shareable AI prompts readers can copy or open in Cursor.
-  </Card>
-  <Card
-    title="Visibility"
-    icon="eye"
-    href="/agent-ready/visibility"
-  >
-    Show different content to humans and agents reading your docs.
-  </Card>
-  <Card
-    title="Contextual menu"
-    icon="bolt"
-    href="/agent-ready/contextual"
-  >
-    Give readers one-click access to Claude, ChatGPT, Cursor, and more.
-  </Card>
-  <Card
-    title="AI coding tools"
-    icon="wand-magic-sparkles"
-    href="/ai-tools/claude-code"
-  >
-    Set up Claude Code, Cursor, or Windsurf with Mintlify's skill.
-  </Card>
+  <Column>
+    <Card title="Discord" icon="comment">
+      Resposta mais rápida — entre em contato conosco diretamente.
+    </Card>
+  </Column>
+  <Column>
+  </Column>
 </Columns>
-
-## Need inspiration?
-
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
