@@ -60,13 +60,17 @@
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Pix",
             "pages": [
               "api-reference/endpoint/get",
               "api-reference/endpoint/create",
               "api-reference/endpoint/delete",
               "api-reference/endpoint/webhook"
             ]
+          },
+          {
+            "group": "Crypto",
+            "pages": []
           }
         ]
       }
@@ -74,9 +78,13 @@
     "global": {
       "anchors": [
         {
-          "anchor": "Documentation",
+          "anchor": "Documentação",
           "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
+          "icon": "book-open-cover",
+          "color": {
+            "light": "#",
+            "dark": "#"
+          }
         },
         {
           "anchor": "Dashboard Valora Payments",
