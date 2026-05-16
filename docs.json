@@ -9,33 +9,44 @@
   },
   "favicon": "/favicon.svg",
   "navigation": {
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Dashboard Valora",
-          "icon": "compass",
-          "href": "https://dash.valora.cash"
-        }
-      ]
-    },
-    "tabs": [
+    "anchors": [
       {
-        "tab": "Comece aqui",
-        "icon": "book-open",
-        "groups": [
+        "anchor": "Untitled Anchor",
+        "hidden": true,
+        "languages": [
           {
-            "group": "Visão geral",
-            "pages": [
-              "introducao",
-              "quick-start",
-              "api-authentication"
+            "language": "pt-BR",
+            "global": {
+              "anchors": [
+                {
+                  "anchor": "Dashboard Valora",
+                  "icon": "compass",
+                  "href": "https://dash.valora.cash"
+                }
+              ]
+            },
+            "tabs": [
+              {
+                "tab": "Comece aqui",
+                "icon": "book-open",
+                "groups": [
+                  {
+                    "group": "Visão geral",
+                    "pages": [
+                      "introducao",
+                      "quick-start",
+                      "api-authentication"
+                    ]
+                  }
+                ]
+              },
+              {
+                "tab": "Referência API",
+                "icon": "code"
+              }
             ]
           }
         ]
-      },
-      {
-        "tab": "Referência API",
-        "icon": "code"
       }
     ]
   },
