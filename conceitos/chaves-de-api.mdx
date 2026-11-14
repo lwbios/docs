@@ -1,0 +1,66 @@
+---
+title: "Chaves de API"
+description: "Crie chaves por ambiente, limite o que cada uma pode fazer com escopos e revogue quando precisar."
+---
+
+Toda requisição à API leva uma chave no header `Authorization`. A chave identifica o seu negócio, define o ambiente (teste ou produção) e limita o que pode ser feito.
+
+```bash
+curl https://api.valorapayments.com.br/v1/balance \
+  -H "Authorization: Bearer sk_vl_..."
+```
+
+## Criar uma chave
+
+<Steps>
+  <Step title="Abra o painel">
+    Entre no [painel](https://console.valorapayments.com.br), vá em **Desenvolvedores → Chaves de API** e clique em **Criar chave de API**. Dê um nome que diga onde a chave é usada (ex.: "Servidor de produção").
+  </Step>
+  <Step title="Escolha o ambiente">
+    **Sandbox** para testes ou **Production** para cobranças reais. O ambiente não muda depois.
+  </Step>
+  <Step title="Escolha os escopos">
+    Em **Permissões da chave**, marque só o que a integração usa. Uma chave sem permissões marcadas pode usar todas as rotas.
+  </Step>
+  <Step title="Copie e guarde">
+    A chave aparece uma única vez. Guarde num cofre de segredos ou numa variável de ambiente do servidor.
+  </Step>
+</Steps>
+
+## Formato
+
+As chaves começam com `sk_vl_` seguido de 48 caracteres hexadecimais. Uma chave com formato errado é recusada com `401 invalid_api_key` antes de qualquer consulta.
+
+## Escopos
+
+| Escopo | Permite |
+| - | - |
+| `payments:read` | listar e consultar pagamentos |
+| `payments:write` | criar, cancelar e devolver pagamentos |
+| `checkouts:read` | consultar compras criadas pela API |
+| `checkouts:write` | criar compras (`POST /v1/checkouts`) |
+| `customers:read` | listar e consultar clientes |
+| `customers:write` | criar e atualizar clientes |
+| `products:read` | listar e consultar produtos |
+| `products:write` | criar e atualizar produtos |
+| `webhooks:read` | listar webhooks e entregas |
+| `webhooks:write` | criar, remover, rotacionar o segredo e reenviar entregas |
+| `balance:read` | consultar o saldo |
+
+Uma chamada sem o escopo necessário responde `403 missing_scope`.
+
+<Tip>
+  Separe chaves por uso. Por exemplo: uma chave só com `checkouts:write` e `payments:read` para a loja, e outra com `webhooks:write` usada só na configuração.
+</Tip>
+
+## Revogar uma chave
+
+Se uma chave vazou ou não é mais usada, revogue no painel em **Desenvolvedores → Chaves de API** e crie outra. A revogação vale em até 15 segundos.
+
+<Warning>
+  Nunca envie a chave para o navegador, o app do cliente, logs ou repositórios. Quem tem a chave age em nome do seu negócio.
+</Warning>
+
+## Isolamento por negócio
+
+Cada chave só enxerga os dados do próprio negócio. Pedir um pagamento, cliente ou produto de outro negócio responde `404 not_found`, como se ele não existisse.

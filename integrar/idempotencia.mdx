@@ -1,0 +1,36 @@
+---
+title: "Idempotência"
+description: "Repita a criação de um pagamento com segurança, sem cobrar o cliente duas vezes."
+---
+
+Uma requisição pode falhar no meio do caminho: a rede cai, o servidor reinicia, o tempo esgota. Nesses casos você não sabe se a cobrança foi criada. O header `Idempotency-Key` resolve isso: repetir a mesma requisição com a mesma chave devolve a cobrança já criada em vez de criar outra.
+
+## Como usar
+
+Envie o header em `POST /v1/payments`, com um valor único por operação (até 200 caracteres):
+
+```bash
+curl https://api.valorapayments.com.br/v1/payments \
+  -H "Authorization: Bearer $VALORA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: pedido-1001" \
+  -d '{ "method": "pix", "amount": "49.90" }'
+```
+
+## O que acontece em cada caso
+
+| Situação | Resposta |
+| - | - |
+| Primeira requisição | `201 Created`, cobrança nova |
+| Mesma chave, **mesmo corpo** | `200 OK` com a cobrança já criada e o header `Idempotent-Replayed: true` |
+| Mesma chave, **corpo diferente** | `409 idempotency_conflict`, nada é criado |
+
+## Boas práticas
+
+- Use um identificador da sua operação, como o id do pedido: `pedido-1001`. Assim, uma nova tentativa sempre reaproveita a mesma chave.
+- Gere uma chave nova para uma cobrança **nova** do mesmo pedido (por exemplo, depois que o Pix anterior expirou): `pedido-1001-2`.
+- Em erros `5xx` e de rede, repita com a **mesma** chave. Em erros `4xx`, corrija o corpo antes de tentar de novo.
+
+<Note>
+  Hoje a idempotência vale para a criação de pagamentos (`POST /v1/payments`). Para as outras criações, guarde o `id` retornado e consulte antes de repetir.
+</Note>

@@ -1,0 +1,42 @@
+---
+title: "Checklist de produção"
+description: "O que conferir antes de abrir as vendas reais."
+---
+
+Antes de trocar a chave de teste pela de produção, confira cada item.
+
+## Conta
+
+- [ ] A empresa foi aprovada na análise do painel.
+- [ ] A chave Pix para saques está cadastrada e confere com o titular da empresa.
+
+## Chaves
+
+- [ ] Uma chave **Production** foi criada só com as permissões necessárias.
+- [ ] A chave está numa variável de ambiente ou cofre de segredos do servidor, nunca no código, no navegador ou no app.
+- [ ] As chaves de teste não estão no servidor de produção.
+
+## Webhooks
+
+- [ ] O endpoint de produção usa HTTPS e responde `2xx` em menos de 10 segundos.
+- [ ] A assinatura `X-Valora-Signature` é verificada em toda entrega, com o corpo cru e o horário `t`.
+- [ ] Eventos repetidos são ignorados pelo `id` (`evt_...`).
+- [ ] O sistema só libera pedidos com `livemode: true`.
+- [ ] O segredo do webhook está guardado como segredo.
+
+## Cobranças
+
+- [ ] Toda criação de pagamento envia `Idempotency-Key`.
+- [ ] O pedido é liberado só por `payment.succeeded`, nunca pelo retorno à `success_url`.
+- [ ] O `external_reference` liga cada pagamento a um pedido do seu sistema.
+- [ ] Os valores enviados estão em reais (`"49.90"`) e os recebidos são lidos em centavos (`4990`).
+- [ ] Erros `5xx` e de rede são repetidos com a mesma `Idempotency-Key`; erros `4xx` são registrados e corrigidos.
+
+## Atendimento
+
+- [ ] A equipe sabe consultar um pagamento pelo painel e pelo `external_reference`.
+- [ ] Existe um processo para contestações (`payment.disputed`).
+
+<Tip>
+  Faça uma venda real de valor baixo logo depois de virar a chave e acompanhe do pagamento ao webhook e ao saldo.
+</Tip>

@@ -1,0 +1,96 @@
+---
+title: "Erros"
+description: "Formato das respostas de erro, os tipos possíveis e o que fazer em cada um."
+---
+
+Toda resposta de erro traz um objeto `error`:
+
+```json
+{
+  "error": {
+    "type": "invalid_request",
+    "message": "Corpo inválido.",
+    "details": { "amount": ["Valor inválido. Use reais com até 2 casas, ex.: \"100.00\"."] }
+  }
+}
+```
+
+| Campo | Descrição |
+| - | - |
+| `type` | código estável do erro. Use no seu código |
+| `message` | explicação em português. Pode mudar; não compare o texto |
+| `details` | só em erros de validação: a lista de problemas por campo |
+
+## Status HTTP
+
+| Status | Significado | O que fazer |
+| - | - | - |
+| `400` | requisição malformada (JSON inválido, cursor inválido) | corrija a requisição |
+| `401` | chave ausente, inválida ou revogada | confira a chave |
+| `403` | sem permissão (escopo ou empresa em análise) | ajuste a chave ou aguarde a aprovação |
+| `404` | objeto não existe ou é de outro negócio | confira o id |
+| `409` | conflito com o estado atual | leia o `type` e ajuste |
+| `413` | corpo acima de 256 KB | reduza o corpo |
+| `422` | dados inválidos | veja `details` |
+| `429` | limite de requisições | espere o `Retry-After` |
+| `502` | falha no provedor de pagamento | repita com a mesma `Idempotency-Key` |
+| `503` | serviço temporariamente indisponível | repita depois de alguns segundos |
+
+## Tipos de erro
+
+### Autenticação e permissão
+
+| `type` | Status | Quando |
+| - | - | - |
+| `invalid_api_key` | 401 | header ausente, formato inválido, chave revogada |
+| `missing_scope` | 403 | a chave não tem o escopo da rota |
+| `business_not_active` | 403 | chave de produção com a empresa em análise ou suspensa |
+| `rate_limited` | 429 | limite de requisições |
+
+### Requisição
+
+| `type` | Status | Quando |
+| - | - | - |
+| `invalid_json` | 400 | o corpo não é JSON válido |
+| `invalid_body` | 400 | não foi possível ler o corpo |
+| `invalid_cursor` | 400 | `starting_after` inválido |
+| `invalid_idempotency_key` | 400 | `Idempotency-Key` com mais de 200 caracteres |
+| `payload_too_large` | 413 | corpo acima de 256 KB |
+| `invalid_request` | 422 | campos inválidos (veja `details`) |
+| `invalid_url` | 422 | URL de webhook recusada (sem HTTPS ou rede interna) |
+| `not_found` | 404 | o objeto não existe para este negócio |
+
+### Pagamentos
+
+| `type` | Status | Quando |
+| - | - | - |
+| `idempotency_conflict` | 409 | mesma `Idempotency-Key` com corpo diferente |
+| `not_cancelable` | 409 | só Pix aguardando pagamento pode ser cancelado |
+| `not_refundable` | 409 | só Pix aprovado pode ser devolvido pela API |
+| `insufficient_balance` | 409 | saldo disponível menor que a devolução |
+| `invalid_amount` | 422 | valor da devolução acima do que resta |
+| `provider_pending` | 202 | a devolução está em andamento; aguarde o evento |
+| `provider_error` | 502 | o provedor de pagamento falhou |
+
+### Checkouts, clientes, produtos e webhooks
+
+| `type` | Status | Quando |
+| - | - | - |
+| `product_not_found` | 404 | produto do `product_cart` não existe |
+| `product_inactive` | 409 | produto não está `active` |
+| `customer_not_found` | 404 | `customer_id` não existe |
+| `email_in_use` | 409 | já existe cliente com este e-mail |
+| `external_reference_in_use` | 409 | já existe produto com este `external_reference` |
+| `limit_reached` | 409 | limite de 10 endpoints de webhook ativos |
+| `not_resendable` | 409 | a entrega já está na fila ou em andamento |
+
+### Serviço
+
+| `type` | Status | Quando |
+| - | - | - |
+| `service_unavailable` | 503 | indisponibilidade temporária |
+| `provider_not_configured` | 503 | provedor de pagamento indisponível |
+
+<Tip>
+  Trate pelo `type`, não pelo status: dois erros `409` diferentes pedem ações diferentes.
+</Tip>

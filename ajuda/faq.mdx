@@ -1,0 +1,46 @@
+---
+title: "Perguntas frequentes"
+description: "Respostas rápidas sobre formas de pagamento, prazos, taxas e integração."
+---
+
+<AccordionGroup>
+  <Accordion title="Quais formas de pagamento posso aceitar?">
+    Pix, cartão de crédito (em 1, 2, 3, 6 ou 12 vezes) e boleto com Pix embutido. Pix pode ser cobrado direto pela API. Cartão e boleto são pagos pelo checkout da Valora.
+  </Accordion>
+  <Accordion title="Preciso saber programar?">
+    Não. Você cria um link de pagamento no painel e compartilha. A API é para quem quer integrar a venda no próprio sistema.
+  </Accordion>
+  <Accordion title="Quanto custa?">
+    Não há mensalidade nem taxa de adesão. Você paga uma taxa por transação. As taxas estão no [site da Valora](https://valorapayments.com.br/pt-BR#fees), e a taxa de cada pagamento aparece no campo `fee`.
+  </Accordion>
+  <Accordion title="Quando o dinheiro fica disponível?">
+    Pix e boleto ficam disponíveis assim que o pagamento é confirmado. Vendas no cartão são liberadas em parcelas mensais, a partir de 30 dias após a compra. Veja [Saldo e saques](/recursos/saldo-e-saques).
+  </Accordion>
+  <Accordion title="Como saco o meu saldo?">
+    Pelo painel, em **Saques**, para a chave Pix da empresa. Não existe saque pela API.
+  </Accordion>
+  <Accordion title="Por que os valores vêm em centavos?">
+    Para evitar erros de arredondamento. Você envia `"49.90"` (reais) e recebe `4990` (centavos inteiros). Divida por 100 para exibir.
+  </Accordion>
+  <Accordion title="Posso criar cobranças de cartão pela API?">
+    Não diretamente. Crie uma compra com `POST /v1/checkouts` e mande o cliente para o `checkout_url`. Assim o número do cartão nunca passa pelo seu servidor.
+  </Accordion>
+  <Accordion title="Como devolvo um pagamento?">
+    Pix: com `POST /v1/payments/{payment_id}/refund`, total ou parcial. Cartão e boleto: fale com o [suporte](/ajuda/suporte).
+  </Accordion>
+  <Accordion title="O cliente voltou para a success_url. Posso liberar o pedido?">
+    Não. Libere só ao receber o webhook `payment.succeeded` com assinatura válida.
+  </Accordion>
+  <Accordion title="Meu webhook não está chegando. O que confiro?">
+    1. A URL é HTTPS e pública (não `localhost` nem IP interno)?
+    2. O endpoint está inscrito no evento?
+    3. O seu servidor responde `2xx` em menos de 10 segundos?
+    4. Veja o status HTTP e o erro de cada entrega em **Desenvolvedores → Webhooks** e reenvie se precisar.
+  </Accordion>
+  <Accordion title="Recebi 401 invalid_api_key.">
+    Confira o header `Authorization: Bearer sk_vl_...`, sem espaços ou aspas a mais, e se a chave não foi revogada.
+  </Accordion>
+  <Accordion title="Recebi 429 rate_limited.">
+    Você passou de 300 requisições por minuto com a mesma chave. Espere os segundos indicados no header `Retry-After` e tente de novo.
+  </Accordion>
+</AccordionGroup>

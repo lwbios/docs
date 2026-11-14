@@ -1,0 +1,47 @@
+---
+title: "Testes"
+description: "Roteiro para validar a sua integração com uma chave de teste antes de receber pagamentos reais."
+---
+
+Com uma chave de teste (Sandbox), tudo funciona como em produção, mas nenhum dinheiro real se move. Os pagamentos de teste aparecem com `livemode: false` e os webhooks são entregues de verdade para a sua URL.
+
+## Roteiro
+
+<Steps>
+  <Step title="Webhook recebido e assinatura válida">
+    Cadastre o endpoint, crie uma cobrança e confira em **Desenvolvedores → Webhooks** se a entrega ficou como entregue. Teste também uma assinatura errada: o seu servidor deve recusar.
+  </Step>
+  <Step title="Pix">
+    Crie um Pix com `POST /v1/payments` e confira que o QR Code e o copia e cola aparecem para o cliente. Deixe um Pix expirar (use `expires_in: 60`) e confira o evento `payment.expired`.
+  </Step>
+  <Step title="Checkout">
+    Crie uma compra com `POST /v1/checkouts`, abra o `checkout_url` e percorra cada forma de pagamento aceita.
+  </Step>
+  <Step title="Cartão">
+    No checkout de teste, use um cartão de teste (abaixo) e confira `payment.succeeded`. Depois, provoque uma recusa e confira `payment.failed`.
+  </Step>
+  <Step title="Eventos repetidos">
+    Reenvie uma entrega pelo painel e confira que o seu sistema não libera o pedido duas vezes.
+  </Step>
+  <Step title="Erros">
+    Envie um corpo inválido e confira que o seu sistema mostra a mensagem certa (`422 invalid_request`).
+  </Step>
+</Steps>
+
+## Cartões de teste
+
+| Número | Bandeira | Resultado esperado |
+| - | - | - |
+| `4012 0010 3844 3335` | Visa | aprovado |
+
+Use qualquer nome, validade futura, CVV de 3 dígitos e um CPF válido.
+
+{/* TODO: confirmar com a Efí (homologação) os números de cartão recusado e como simular o pagamento de Pix e boleto no Sandbox. */}
+
+<Warning>
+  Nunca use um cartão real no ambiente de teste.
+</Warning>
+
+## Depois dos testes
+
+Quando o roteiro passar, siga o [checklist de produção](/integrar/producao).

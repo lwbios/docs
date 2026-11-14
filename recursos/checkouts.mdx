@@ -1,0 +1,121 @@
+---
+title: "Checkouts"
+description: "Uma página de pagamento pronta, com a sua marca, onde o cliente paga por Pix, cartão ou boleto."
+---
+
+O checkout é a página de pagamento hospedada pela Valora em `pay.valorapayments.com.br`. O cliente informa os dados, escolhe a forma de pagamento e paga. Você não precisa construir formulário de cartão nem tela de QR Code.
+
+Existem duas formas de levar o cliente ao checkout:
+
+| Forma | Quando usar | Como criar |
+| - | - | - |
+| **Link fixo** | vender um produto por link (WhatsApp, Instagram, bio, e-mail) | no painel, em **Checkouts** |
+| **Checkout pela API** | uma compra criada pelo seu sistema para um pedido específico | `POST /v1/checkouts` |
+
+## Link fixo
+
+O link fixo (`https://pay.valorapayments.com.br/c/chk_...`) aponta para um produto e serve para quantas vendas você quiser. Cada cliente que abre o link começa uma compra nova.
+
+No painel, você define o produto, a aparência da página e para onde o cliente volta depois de pagar ou desistir.
+
+<Tip>
+  O link fixo não exige código. Para saber quando uma venda foi paga, cadastre um [webhook](/integrar/webhooks) ou acompanhe pelo painel.
+</Tip>
+
+## Checkout pela API
+
+Use quando o seu sistema já tem um pedido e quer que o cliente pague aquele pedido. O preço vem do produto e fica travado no momento da criação.
+
+<Steps>
+  <Step title="Crie a compra no seu servidor">
+    ```bash
+    curl https://api.valorapayments.com.br/v1/checkouts \
+      -H "Authorization: Bearer $VALORA_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "product_cart": [{ "product_id": "prod_Ab12Cd34Ef56Gh78", "quantity": 1 }],
+        "customer": { "name": "Ana Souza", "email": "ana@example.com" },
+        "allowed_payment_method_types": ["pix", "card"],
+        "success_url": "https://sualoja.com/pedido/1001/obrigado",
+        "cancel_url": "https://sualoja.com/carrinho",
+        "external_reference": "pedido-1001"
+      }'
+    ```
+  </Step>
+  <Step title="Redirecione o cliente">
+    A resposta traz o `checkout_url`. Redirecione o cliente para ele:
+
+    ```json
+    {
+      "id": "cs_Qw12Er34Ty56Ui78",
+      "object": "checkout_session",
+      "status": "open",
+      "checkout_url": "https://pay.valorapayments.com.br/s/cs_Qw12Er34Ty56Ui78",
+      "amount": { "subtotal": 14990, "total": 14990, "currency": "BRL" },
+      "allowed_payment_method_types": ["pix", "card"],
+      "payment_id": null,
+      "external_reference": "pedido-1001",
+      "expires_at": "2026-11-15T18:00:00.000Z"
+    }
+    ```
+  </Step>
+  <Step title="Confirme pelo webhook">
+    Quando o cliente paga, você recebe `payment.succeeded`. O pagamento traz o mesmo `external_reference` e o mesmo `metadata` que você enviou na compra.
+  </Step>
+</Steps>
+
+### Opções da compra
+
+| Campo | O que faz |
+| - | - |
+| `product_cart` | exatamente 1 item, com `product_id` de um produto **ativo** e `quantity` de 1 a 100 |
+| `customer` | `{ "customer_id": "cus_..." }` de um cliente salvo, **ou** `{ name, email, phone }` para preencher o formulário |
+| `allowed_payment_method_types` | quais formas aparecem: `pix`, `card`, `boleto` (padrão: todas) |
+| `success_url` / `cancel_url` | para onde o cliente volta depois de pagar ou desistir (HTTPS) |
+| `expires_in` | validade do link em segundos, de 300 (5 min) a 86400 (24 h). Padrão: 24 h |
+| `external_reference` / `metadata` | seus identificadores; seguem para o pagamento e para os webhooks |
+
+Os detalhes de cada campo estão em [Criar um checkout](/api-reference/checkouts/criar-um-checkout).
+
+## Status da compra
+
+| Status | Significado |
+| - | - |
+| `open` | aguardando o cliente pagar |
+| `processing` | pagamento em análise (por exemplo, cartão em análise antifraude) |
+| `paid` | pago |
+| `failed` | a tentativa falhou (cartão recusado, Pix com valor diferente) |
+| `expired` | o prazo da compra acabou sem pagamento |
+
+Consulte a qualquer momento com `GET /v1/checkouts/{session_id}`. Mesmo assim, use o webhook como fonte da confirmação.
+
+## O que o checkout já faz por você
+
+<AccordionGroup>
+  <Accordion title="Validação dos dados" icon="circle-check">
+    Confere CPF e CNPJ pelo dígito verificador, o número do cartão e a validade antes de enviar.
+  </Accordion>
+  <Accordion title="Proteção contra testes de cartão" icon="shield">
+    O pagamento com cartão passa por verificação anti-robô e por limites de tentativas. Depois de 3 recusas na mesma compra, o cartão é bloqueado naquela compra e o cliente pode pagar por Pix ou boleto.
+  </Accordion>
+  <Accordion title="Troca de forma de pagamento" icon="arrows-rotate">
+    Gerou um Pix e mudou de ideia? O cliente volta e escolhe outra forma sem perder os dados.
+  </Accordion>
+  <Accordion title="Comprovante por e-mail" icon="envelope">
+    Quando o pagamento é confirmado, o cliente recebe um comprovante no e-mail informado.
+  </Accordion>
+  <Accordion title="Compra vencida" icon="clock">
+    Num link fixo, uma compra vencida vira uma compra nova. Numa compra criada pela API, o cliente vê a tela de pagamento expirado e o link de volta para a sua loja.
+  </Accordion>
+</AccordionGroup>
+
+## Próximos passos
+
+<Columns cols={2}>
+  <Card title="Formas de pagamento" icon="credit-card" href="/recursos/pix">
+    Como funcionam Pix, cartão e boleto.
+  </Card>
+  <Card title="Webhooks" icon="webhook" href="/integrar/webhooks">
+    Receba a confirmação no seu servidor.
+  </Card>
+</Columns>

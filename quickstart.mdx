@@ -1,47 +1,128 @@
 ---
-title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+title: "Início rápido"
+description: "Crie uma chave de teste, gere sua primeira cobrança Pix e receba a confirmação por webhook."
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
+Neste guia, você sai de uma conta nova até uma cobrança Pix criada pela API e confirmada no seu servidor. Tudo acontece no ambiente de teste, sem dinheiro real.
 
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
+## Pré-requisitos
 
-## Prerequisites
+- Uma conta no [painel da Valora](https://console.valorapayments.com.br).
+- Um servidor que faça requisições HTTPS (os exemplos usam `curl` e Node.js 18+).
+- Para receber webhooks, uma URL pública com HTTPS. Em desenvolvimento, use um túnel como o ngrok ou o Cloudflare Tunnel.
 
-Before you begin, you must have:
-
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
-
-## Get started
+## Faça sua primeira cobrança
 
 <Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
+  <Step title="Crie uma chave de teste">
+    No painel, abra **Desenvolvedores → Chaves de API** e crie uma chave no ambiente **Sandbox**. Copie a chave (`sk_vl_...`) e guarde numa variável de ambiente do servidor.
 
     ```bash
-    npm install your-package
+    export VALORA_API_KEY="sk_vl_..."
+    ```
+
+    <Warning>
+      A chave dá acesso aos dados do seu negócio. Use só no servidor. Nunca coloque no navegador, no app ou no repositório.
+    </Warning>
+  </Step>
+  <Step title="Cadastre um webhook">
+    O webhook avisa o seu servidor quando o pagamento é confirmado. Cadastre a URL que vai receber os eventos:
+
+    ```bash
+    curl https://api.valorapayments.com.br/v1/webhooks \
+      -H "Authorization: Bearer $VALORA_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{ "url": "https://seu-dominio.com/webhooks/valora", "events": ["payment.succeeded"] }'
+    ```
+
+    A resposta traz o campo `secret` (`whsec_...`). Ele aparece **só agora**. Guarde junto com a chave: é ele que valida a assinatura de cada evento.
+  </Step>
+  <Step title="Crie uma cobrança Pix">
+    ```bash
+    curl https://api.valorapayments.com.br/v1/payments \
+      -H "Authorization: Bearer $VALORA_API_KEY" \
+      -H "Content-Type: application/json" \
+      -H "Idempotency-Key: pedido-1001" \
+      -d '{ "method": "pix", "amount": "49.90", "external_reference": "pedido-1001" }'
+    ```
+
+    A resposta (`201`) traz o pagamento com `status: "requires_payment"` e os dados do Pix:
+
+    ```json
+    {
+      "id": "pay_Xk2v9QeR7tLmN3bA",
+      "object": "payment",
+      "livemode": false,
+      "method": "pix",
+      "status": "requires_payment",
+      "amount": { "value": 4990, "currency": "BRL" },
+      "external_reference": "pedido-1001",
+      "pix": {
+        "txid": "...",
+        "brcode": "00020101021226...",
+        "qr_image": "data:image/png;base64,..."
+      },
+      "expires_at": "2026-11-14T19:00:00.000Z"
+    }
+    ```
+
+    Mostre ao cliente o `pix.qr_image` (QR Code) ou o `pix.brcode` (código copia e cola).
+  </Step>
+  <Step title="Confirme o pagamento no webhook">
+    Quando o Pix é pago, a Valora envia `payment.succeeded` para a sua URL. Valide a assinatura antes de liberar o pedido:
+
+    ```js
+    import crypto from "node:crypto";
+    import express from "express";
+
+    const app = express();
+
+    // Use o corpo CRU: a assinatura é calculada sobre os bytes exatos que chegaram.
+    app.post("/webhooks/valora", express.raw({ type: "application/json" }), (req, res) => {
+      const header = req.get("X-Valora-Signature") ?? "";
+      const parts = Object.fromEntries(header.split(",").map((p) => p.split("=")));
+      const raw = req.body.toString("utf8");
+      const expected = crypto
+        .createHmac("sha256", process.env.VALORA_WEBHOOK_SECRET)
+        .update(`${parts.t}.${raw}`)
+        .digest("hex");
+
+      const valid =
+        typeof parts.v1 === "string" &&
+        parts.v1.length === expected.length &&
+        crypto.timingSafeEqual(Buffer.from(parts.v1), Buffer.from(expected));
+      const recent = Math.abs(Date.now() / 1000 - Number(parts.t)) < 300;
+      if (!valid || !recent) return res.sendStatus(400);
+
+      const event = JSON.parse(raw);
+      if (event.type === "payment.succeeded") {
+        const payment = event.data.object;
+        // Libere o pedido payment.external_reference (uma vez só, mesmo que o evento chegue de novo).
+      }
+      res.sendStatus(200);
+    });
+
+    app.listen(3000);
     ```
   </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
-
-    ```bash
-    your-cli init
-    ```
-  </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
-
-    ```bash
-    your-cli start
-    ```
+  <Step title="Pague o Pix de teste">
+    No ambiente de teste, nenhum dinheiro real se move. Veja em [Testes](/integrar/testes) como simular o pagamento e acompanhe a entrega do evento em **Desenvolvedores → Webhooks** no painel.
   </Step>
 </Steps>
 
-<Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
+## Próximos passos
 
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
-</Tip>
+<Columns cols={2}>
+  <Card title="Checkout pela API" icon="window-maximize" href="/recursos/checkouts">
+    Deixe o cliente escolher entre Pix, cartão e boleto numa página pronta.
+  </Card>
+  <Card title="Webhooks" icon="webhook" href="/integrar/webhooks">
+    Assinatura, novas tentativas e reenvio de entregas.
+  </Card>
+  <Card title="Checklist de produção" icon="list-check" href="/integrar/producao">
+    O que conferir antes de vender de verdade.
+  </Card>
+  <Card title="Referência da API" icon="code" href="/api-reference/introducao">
+    Todos os endpoints e campos.
+  </Card>
+</Columns>

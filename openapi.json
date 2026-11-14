@@ -1,0 +1,5399 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Valora Payments API",
+    "version": "1.0.0",
+    "description": "API REST da Valora Payments. Valores na entrada em reais (texto, ex.: \"149.90\"); nas respostas, em centavos inteiros."
+  },
+  "servers": [
+    {
+      "url": "https://api.valorapayments.com.br",
+      "description": "Teste e produção (o ambiente vem da chave)"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Pagamentos"
+    },
+    {
+      "name": "Checkouts"
+    },
+    {
+      "name": "Clientes"
+    },
+    {
+      "name": "Produtos"
+    },
+    {
+      "name": "Saldo"
+    },
+    {
+      "name": "Webhooks"
+    }
+  ],
+  "paths": {
+    "/v1/payments": {
+      "post": {
+        "operationId": "criarPagamento",
+        "summary": "Criar um pagamento Pix",
+        "description": "Cria uma cobrança Pix e devolve o QR Code e o código copia e cola. Envie `amount` **ou** `product_id` (um dos dois). A confirmação chega pelo webhook `payment.succeeded`.\n\nEscopo: `payments:write`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "description": "Chave única da operação (até 200 caracteres). Repetir com o mesmo corpo devolve o pagamento já criado.",
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "method"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "method": {
+                    "type": "string",
+                    "description": "Forma de pagamento. Pela API, só `pix`.",
+                    "enum": [
+                      "pix"
+                    ]
+                  },
+                  "amount": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{1,9}(\\.\\d{1,2})?$"
+                      },
+                      {
+                        "type": "number"
+                      }
+                    ],
+                    "description": "Valor da cobrança. Obrigatório sem `product_id`. Em reais, com até 2 casas e ponto decimal (ex.: \"149.90\"). Mínimo 0.01.",
+                    "examples": [
+                      "149.90"
+                    ]
+                  },
+                  "product_id": {
+                    "type": "string",
+                    "description": "Produto do catálogo. O valor passa a ser preço × `quantity`.",
+                    "pattern": "^prod_[A-Za-z0-9_-]{16}$",
+                    "examples": [
+                      "prod_Xk2v9QeR7tLmN3bA"
+                    ]
+                  },
+                  "quantity": {
+                    "type": "integer",
+                    "description": "Quantidade do produto.",
+                    "minimum": 1,
+                    "maximum": 10000,
+                    "default": 1
+                  },
+                  "currency": {
+                    "type": "string",
+                    "description": "Moeda.",
+                    "enum": [
+                      "BRL"
+                    ],
+                    "default": "BRL"
+                  },
+                  "customer_id": {
+                    "type": "string",
+                    "description": "Cliente associado.",
+                    "pattern": "^cus_[A-Za-z0-9_-]{16}$",
+                    "examples": [
+                      "cus_Xk2v9QeR7tLmN3bA"
+                    ]
+                  },
+                  "external_reference": {
+                    "type": "string",
+                    "description": "O seu identificador (id do pedido, SKU). Até 100 caracteres.",
+                    "maxLength": 100,
+                    "examples": [
+                      "pedido-1001"
+                    ]
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Descrição da cobrança (até 200 caracteres).",
+                    "maxLength": 200
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string",
+                      "maxLength": 500
+                    },
+                    "maxProperties": 20,
+                    "description": "Até 20 pares chave/valor em texto (chave até 40, valor até 500 caracteres). Volta igual nas respostas e nos webhooks.",
+                    "examples": [
+                      {
+                        "order_id": "1001"
+                      }
+                    ]
+                  },
+                  "expires_in": {
+                    "type": "integer",
+                    "description": "Validade do Pix em segundos.",
+                    "minimum": 60,
+                    "maximum": 86400,
+                    "default": 3600
+                  },
+                  "splits": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 5,
+                    "description": "Divide o valor líquido entre negócios do mesmo dono. A soma de `share_bps` deve ser 10000.",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "business_id",
+                        "share_bps"
+                      ],
+                      "properties": {
+                        "business_id": {
+                          "type": "string",
+                          "description": "Negócio que recebe a parte."
+                        },
+                        "share_bps": {
+                          "type": "integer",
+                          "description": "Parte em pontos-base.",
+                          "minimum": 1,
+                          "maximum": 10000
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "examples": {
+                "exemplo": {
+                  "summary": "Exemplo",
+                  "value": {
+                    "method": "pix",
+                    "amount": "149.90",
+                    "description": "Pedido 1001",
+                    "external_reference": "pedido-1001",
+                    "expires_in": 1800
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Repetição com a mesma `Idempotency-Key` e o mesmo corpo: o pagamento já criado (header `Idempotent-Replayed: true`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Payment"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Pagamento criado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Payment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`Idempotency-Key` inválida ou JSON malformado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_idempotency_key",
+                    "message": "Idempotency-Key deve ter até 200 caracteres."
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chave ausente, inválida ou revogada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_api_key",
+                    "message": "Chave de API inválida ou revogada."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A chave não tem o escopo da rota, ou a empresa ainda não opera em produção.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "missing_scope",
+                    "message": "A chave não tem o escopo necessário."
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Mesma `Idempotency-Key` com corpo diferente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "idempotency_conflict",
+                    "message": "Idempotency-Key já usada com outro corpo."
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos. Veja `details`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_request",
+                    "message": "Corpo inválido.",
+                    "details": {
+                      "amount": [
+                        "Valor inválido."
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições. Veja o header `Retry-After`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "rate_limited",
+                    "message": "Muitas requisições. Tente novamente em instantes."
+                  }
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Falha no provedor de pagamento. Repita com a mesma `Idempotency-Key`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "provider_error",
+                    "message": "Falha ao criar a cobrança. Tente novamente."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Pagamentos"
+        ]
+      },
+      "get": {
+        "operationId": "listarPagamentos",
+        "summary": "Listar pagamentos",
+        "description": "Lista os pagamentos do negócio, do mais novo para o mais antigo.\n\nEscopo: `payments:read`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Itens por página, de 1 a 100.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "starting_after",
+            "in": "query",
+            "required": false,
+            "description": "O `next_cursor` da página anterior.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Filtra por status.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "requires_payment",
+                "processing",
+                "succeeded",
+                "underpaid",
+                "overpaid",
+                "expired",
+                "failed",
+                "canceled",
+                "partially_refunded",
+                "refunded",
+                "disputed"
+              ]
+            }
+          },
+          {
+            "name": "method",
+            "in": "query",
+            "required": false,
+            "description": "Filtra por forma de pagamento.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pix",
+                "card",
+                "boleto"
+              ]
+            }
+          },
+          {
+            "name": "customer_id",
+            "in": "query",
+            "required": false,
+            "description": "Filtra por cliente.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "external_reference",
+            "in": "query",
+            "required": false,
+            "description": "Filtra pelo seu identificador.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Página de pagamentos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "description": "Sempre `list`.",
+                      "enum": [
+                        "list"
+                      ]
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Payment"
+                      }
+                    },
+                    "has_more": {
+                      "type": "boolean",
+                      "description": "Há mais itens depois desta página."
+                    },
+                    "next_cursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Passe em `starting_after` para a próxima página."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chave ausente, inválida ou revogada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_api_key",
+                    "message": "Chave de API inválida ou revogada."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A chave não tem o escopo da rota, ou a empresa ainda não opera em produção.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "missing_scope",
+                    "message": "A chave não tem o escopo necessário."
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos. Veja `details`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_request",
+                    "message": "Corpo inválido.",
+                    "details": {
+                      "amount": [
+                        "Valor inválido."
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições. Veja o header `Retry-After`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "rate_limited",
+                    "message": "Muitas requisições. Tente novamente em instantes."
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Indisponibilidade temporária.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "service_unavailable",
+                    "message": "Serviço temporariamente indisponível."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Pagamentos"
+        ]
+      }
+    },
+    "/v1/payments/{payment_id}": {
+      "get": {
+        "operationId": "consultarPagamento",
+        "summary": "Consultar um pagamento",
+        "description": "Devolve um pagamento com o status atual.\n\nEscopo: `payments:read`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "payment_id",
+            "in": "path",
+            "required": true,
+            "description": "Id do pagamento.",
+            "schema": {
+              "type": "string",
+              "pattern": "^pay_[A-Za-z0-9_-]{16}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "O pagamento.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Payment"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chave ausente, inválida ou revogada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_api_key",
+                    "message": "Chave de API inválida ou revogada."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A chave não tem o escopo da rota, ou a empresa ainda não opera em produção.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "missing_scope",
+                    "message": "A chave não tem o escopo necessário."
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado para este negócio.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "not_found",
+                    "message": "Não encontrado."
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições. Veja o header `Retry-After`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "rate_limited",
+                    "message": "Muitas requisições. Tente novamente em instantes."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Pagamentos"
+        ]
+      }
+    },
+    "/v1/payments/{payment_id}/cancel": {
+      "post": {
+        "operationId": "cancelarPagamento",
+        "summary": "Cancelar um pagamento",
+        "description": "Cancela um Pix que ainda está aguardando pagamento (`requires_payment`). O QR Code deixa de valer e o evento `payment.canceled` é enviado.\n\nEscopo: `payments:write`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "payment_id",
+            "in": "path",
+            "required": true,
+            "description": "Id do pagamento.",
+            "schema": {
+              "type": "string",
+              "pattern": "^pay_[A-Za-z0-9_-]{16}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pagamento cancelado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Payment"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chave ausente, inválida ou revogada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_api_key",
+                    "message": "Chave de API inválida ou revogada."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A chave não tem o escopo da rota, ou a empresa ainda não opera em produção.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "missing_scope",
+                    "message": "A chave não tem o escopo necessário."
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado para este negócio.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "not_found",
+                    "message": "Não encontrado."
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "O pagamento não pode mais ser cancelado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "not_cancelable",
+                    "message": "Só pagamentos aguardando pagamento podem ser cancelados."
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições. Veja o header `Retry-After`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "rate_limited",
+                    "message": "Muitas requisições. Tente novamente em instantes."
+                  }
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "O provedor não confirmou o cancelamento.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "provider_error",
+                    "message": "Não foi possível cancelar a cobrança."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Pagamentos"
+        ]
+      }
+    },
+    "/v1/payments/{payment_id}/refund": {
+      "post": {
+        "operationId": "devolverPagamento",
+        "summary": "Devolver um pagamento",
+        "description": "Devolve todo ou parte de um Pix aprovado **ao pagador**. Sem `amount`, devolve tudo o que resta. O valor sai do saldo disponível. Cartão e boleto são devolvidos pelo suporte.\n\nEscopo: `payments:write`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "payment_id",
+            "in": "path",
+            "required": true,
+            "description": "Id do pagamento.",
+            "schema": {
+              "type": "string",
+              "pattern": "^pay_[A-Za-z0-9_-]{16}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "amount": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{1,9}(\\.\\d{1,2})?$"
+                      },
+                      {
+                        "type": "number"
+                      }
+                    ],
+                    "description": "Valor a devolver. Omitido = tudo o que resta. Em reais, com até 2 casas e ponto decimal (ex.: \"149.90\"). Mínimo 0.01.",
+                    "examples": [
+                      "149.90"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Motivo (até 200 caracteres).",
+                    "maxLength": 200
+                  }
+                }
+              },
+              "example": {
+                "amount": "20.00",
+                "reason": "Item fora de estoque"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Devolução criada, com o pagamento atualizado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Refund"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "A devolução está em andamento. O evento `payment.refunded` chega quando concluir.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "provider_pending",
+                    "message": "Não foi possível confirmar a devolução agora. O valor está reservado e será conferido automaticamente."
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chave ausente, inválida ou revogada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_api_key",
+                    "message": "Chave de API inválida ou revogada."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A chave não tem o escopo da rota, ou a empresa ainda não opera em produção.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "missing_scope",
+                    "message": "A chave não tem o escopo necessário."
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado para este negócio.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "not_found",
+                    "message": "Não encontrado."
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Pagamento não devolvível pela API ou saldo insuficiente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "not_refundable",
+                    "message": "Só pagamentos Pix aprovados podem ser devolvidos."
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Valor inválido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_amount",
+                    "message": "Valor acima do que resta para devolver."
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições. Veja o header `Retry-After`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "rate_limited",
+                    "message": "Muitas requisições. Tente novamente em instantes."
+                  }
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Falha no provedor.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "provider_error",
+                    "message": "Falha ao devolver."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Pagamentos"
+        ]
+      }
+    },
+    "/v1/checkouts": {
+      "post": {
+        "operationId": "criarCheckout",
+        "summary": "Criar um checkout",
+        "description": "Cria uma compra e devolve o `checkout_url`, o link que você manda ao cliente. O cliente escolhe Pix, cartão ou boleto na página da Valora. O preço vem do produto e fica travado na criação.\n\nEscopo: `checkouts:write`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "product_cart"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "product_cart": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 1,
+                    "description": "Exatamente 1 item.",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "product_id"
+                      ],
+                      "additionalProperties": false,
+                      "properties": {
+                        "product_id": {
+                          "type": "string",
+                          "description": "Produto ativo do negócio.",
+                          "pattern": "^prod_[A-Za-z0-9_-]{16}$",
+                          "examples": [
+                            "prod_Xk2v9QeR7tLmN3bA"
+                          ]
+                        },
+                        "quantity": {
+                          "type": "integer",
+                          "description": "Quantidade.",
+                          "minimum": 1,
+                          "maximum": 100,
+                          "default": 1
+                        }
+                      }
+                    }
+                  },
+                  "customer": {
+                    "description": "Cliente salvo (`customer_id`) **ou** dados para preencher o formulário.",
+                    "oneOf": [
+                      {
+                        "title": "Cliente salvo",
+                        "type": "object",
+                        "required": [
+                          "customer_id"
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                          "customer_id": {
+                            "type": "string",
+                            "description": "Cliente do negócio.",
+                            "pattern": "^cus_[A-Za-z0-9_-]{16}$",
+                            "examples": [
+                              "cus_Xk2v9QeR7tLmN3bA"
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "title": "Dados do cliente",
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "description": "Nome (até 120).",
+                            "maxLength": 120
+                          },
+                          "email": {
+                            "type": "string",
+                            "description": "E-mail.",
+                            "format": "email"
+                          },
+                          "phone": {
+                            "type": "string",
+                            "description": "Celular com DDD, só dígitos (10 ou 11).",
+                            "pattern": "^\\d{10,11}$"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "allowed_payment_method_types": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 3,
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "pix",
+                        "card",
+                        "boleto"
+                      ]
+                    },
+                    "description": "Formas aceitas. Padrão: todas."
+                  },
+                  "success_url": {
+                    "type": "string",
+                    "description": "Para onde o cliente volta depois de pagar (HTTPS).",
+                    "format": "uri"
+                  },
+                  "cancel_url": {
+                    "type": "string",
+                    "description": "Para onde o cliente volta ao desistir (HTTPS).",
+                    "format": "uri"
+                  },
+                  "expires_in": {
+                    "type": "integer",
+                    "description": "Validade do link em segundos.",
+                    "minimum": 300,
+                    "maximum": 86400,
+                    "default": 86400
+                  },
+                  "external_reference": {
+                    "type": "string",
+                    "description": "O seu identificador (id do pedido, SKU). Até 100 caracteres.",
+                    "maxLength": 100,
+                    "examples": [
+                      "pedido-1001"
+                    ]
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string",
+                      "maxLength": 500
+                    },
+                    "maxProperties": 20,
+                    "description": "Até 20 pares chave/valor em texto (chave até 40, valor até 500 caracteres). Volta igual nas respostas e nos webhooks.",
+                    "examples": [
+                      {
+                        "order_id": "1001"
+                      }
+                    ]
+                  }
+                }
+              },
+              "examples": {
+                "exemplo": {
+                  "summary": "Exemplo",
+                  "value": {
+                    "product_cart": [
+                      {
+                        "product_id": "prod_Ab12Cd34Ef56Gh78",
+                        "quantity": 1
+                      }
+                    ],
+                    "customer": {
+                      "name": "Ana Souza",
+                      "email": "ana@example.com"
+                    },
+                    "allowed_payment_method_types": [
+                      "pix",
+                      "card"
+                    ],
+                    "success_url": "https://sualoja.com/pedido/1001/obrigado",
+                    "cancel_url": "https://sualoja.com/carrinho",
+                    "external_reference": "pedido-1001"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Compra criada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckoutSession"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chave ausente, inválida ou revogada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_api_key",
+                    "message": "Chave de API inválida ou revogada."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A chave não tem o escopo da rota, ou a empresa ainda não opera em produção.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "missing_scope",
+                    "message": "A chave não tem o escopo necessário."
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Produto ou cliente não encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "product_not_found",
+                    "message": "Produto não encontrado."
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Produto não está ativo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "product_inactive",
+                    "message": "O produto não está ativo."
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos. Veja `details`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_request",
+                    "message": "Corpo inválido.",
+                    "details": {
+                      "amount": [
+                        "Valor inválido."
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições. Veja o header `Retry-After`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "rate_limited",
+                    "message": "Muitas requisições. Tente novamente em instantes."
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Indisponibilidade temporária.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "service_unavailable",
+                    "message": "Serviço temporariamente indisponível."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Checkouts"
+        ]
+      }
+    },
+    "/v1/checkouts/{session_id}": {
+      "get": {
+        "operationId": "consultarCheckout",
+        "summary": "Consultar um checkout",
+        "description": "Devolve a compra com o status atual. A confirmação do pagamento continua chegando pelo webhook.\n\nEscopo: `checkouts:read`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "description": "Id da compra.",
+            "schema": {
+              "type": "string",
+              "pattern": "^cs_[A-Za-z0-9_-]{16}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A compra.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckoutSession"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chave ausente, inválida ou revogada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_api_key",
+                    "message": "Chave de API inválida ou revogada."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A chave não tem o escopo da rota, ou a empresa ainda não opera em produção.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "missing_scope",
+                    "message": "A chave não tem o escopo necessário."
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado para este negócio.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "not_found",
+                    "message": "Não encontrado."
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições. Veja o header `Retry-After`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "rate_limited",
+                    "message": "Muitas requisições. Tente novamente em instantes."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Checkouts"
+        ]
+      }
+    },
+    "/v1/customers": {
+      "post": {
+        "operationId": "criarCliente",
+        "summary": "Criar um cliente",
+        "description": "Salva um cliente para reutilizar em cobranças e checkouts.\n\nEscopo: `customers:write`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Nome (até 120).",
+                    "maxLength": 120
+                  },
+                  "email": {
+                    "type": "string",
+                    "description": "E-mail. Único por negócio.",
+                    "format": "email"
+                  },
+                  "document": {
+                    "type": "string",
+                    "description": "CPF (11) ou CNPJ (14 dígitos), só números.",
+                    "pattern": "^(\\d{11}|\\d{14})$"
+                  },
+                  "phone": {
+                    "type": "string",
+                    "description": "Telefone, só dígitos (8 a 15), `+` opcional.",
+                    "pattern": "^\\+?\\d{8,15}$"
+                  },
+                  "external_reference": {
+                    "type": "string",
+                    "description": "O seu identificador (id do pedido, SKU). Até 100 caracteres.",
+                    "maxLength": 100,
+                    "examples": [
+                      "pedido-1001"
+                    ]
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string",
+                      "maxLength": 500
+                    },
+                    "maxProperties": 20,
+                    "description": "Até 20 pares chave/valor em texto (chave até 40, valor até 500 caracteres). Volta igual nas respostas e nos webhooks.",
+                    "examples": [
+                      {
+                        "order_id": "1001"
+                      }
+                    ]
+                  }
+                }
+              },
+              "examples": {
+                "exemplo": {
+                  "summary": "Exemplo",
+                  "value": {
+                    "name": "Ana Souza",
+                    "email": "ana@example.com",
+                    "document": "12345678909",
+                    "phone": "11988887777",
+                    "external_reference": "usuario-42"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Cliente criado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Customer"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chave ausente, inválida ou revogada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_api_key",
+                    "message": "Chave de API inválida ou revogada."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A chave não tem o escopo da rota, ou a empresa ainda não opera em produção.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "missing_scope",
+                    "message": "A chave não tem o escopo necessário."
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Já existe cliente com este e-mail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "email_in_use",
+                    "message": "Já existe um cliente com este e-mail."
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos. Veja `details`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_request",
+                    "message": "Corpo inválido.",
+                    "details": {
+                      "amount": [
+                        "Valor inválido."
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições. Veja o header `Retry-After`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "rate_limited",
+                    "message": "Muitas requisições. Tente novamente em instantes."
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Indisponibilidade temporária.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "service_unavailable",
+                    "message": "Serviço temporariamente indisponível."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Clientes"
+        ]
+      },
+      "get": {
+        "operationId": "listarClientes",
+        "summary": "Listar clientes",
+        "description": "Lista os clientes do negócio, do mais novo para o mais antigo.\n\nEscopo: `customers:read`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Itens por página, de 1 a 100.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "starting_after",
+            "in": "query",
+            "required": false,
+            "description": "O `next_cursor` da página anterior.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "email",
+            "in": "query",
+            "required": false,
+            "description": "Filtra pelo e-mail.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "external_reference",
+            "in": "query",
+            "required": false,
+            "description": "Filtra pelo seu identificador.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Página de clientes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "description": "Sempre `list`.",
+                      "enum": [
+                        "list"
+                      ]
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Customer"
+                      }
+                    },
+                    "has_more": {
+                      "type": "boolean",
+                      "description": "Há mais itens depois desta página."
+                    },
+                    "next_cursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Passe em `starting_after` para a próxima página."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chave ausente, inválida ou revogada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_api_key",
+                    "message": "Chave de API inválida ou revogada."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A chave não tem o escopo da rota, ou a empresa ainda não opera em produção.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "missing_scope",
+                    "message": "A chave não tem o escopo necessário."
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos. Veja `details`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_request",
+                    "message": "Corpo inválido.",
+                    "details": {
+                      "amount": [
+                        "Valor inválido."
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições. Veja o header `Retry-After`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "rate_limited",
+                    "message": "Muitas requisições. Tente novamente em instantes."
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Indisponibilidade temporária.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "service_unavailable",
+                    "message": "Serviço temporariamente indisponível."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Clientes"
+        ]
+      }
+    },
+    "/v1/customers/{customer_id}": {
+      "get": {
+        "operationId": "consultarCliente",
+        "summary": "Consultar um cliente",
+        "description": "Devolve um cliente.\n\nEscopo: `customers:read`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "description": "Id do cliente.",
+            "schema": {
+              "type": "string",
+              "pattern": "^cus_[A-Za-z0-9_-]{16}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "O cliente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Customer"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chave ausente, inválida ou revogada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_api_key",
+                    "message": "Chave de API inválida ou revogada."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A chave não tem o escopo da rota, ou a empresa ainda não opera em produção.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "missing_scope",
+                    "message": "A chave não tem o escopo necessário."
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado para este negócio.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "not_found",
+                    "message": "Não encontrado."
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições. Veja o header `Retry-After`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "rate_limited",
+                    "message": "Muitas requisições. Tente novamente em instantes."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Clientes"
+        ]
+      },
+      "patch": {
+        "operationId": "atualizarCliente",
+        "summary": "Atualizar um cliente",
+        "description": "Atualiza só os campos enviados. `null` limpa um campo opcional.\n\nEscopo: `customers:write`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "description": "Id do cliente.",
+            "schema": {
+              "type": "string",
+              "pattern": "^cus_[A-Za-z0-9_-]{16}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Nome.",
+                    "maxLength": 120
+                  },
+                  "email": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "E-mail.",
+                    "format": "email"
+                  },
+                  "document": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "CPF ou CNPJ, só dígitos.",
+                    "pattern": "^(\\d{11}|\\d{14})$"
+                  },
+                  "phone": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Telefone, só dígitos.",
+                    "pattern": "^\\+?\\d{8,15}$"
+                  },
+                  "external_reference": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "O seu identificador.",
+                    "maxLength": 100
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string",
+                      "maxLength": 500
+                    },
+                    "maxProperties": 20,
+                    "description": "Até 20 pares chave/valor em texto (chave até 40, valor até 500 caracteres). Volta igual nas respostas e nos webhooks.",
+                    "examples": [
+                      {
+                        "order_id": "1001"
+                      }
+                    ]
+                  }
+                }
+              },
+              "examples": {
+                "exemplo": {
+                  "summary": "Exemplo",
+                  "value": {
+                    "phone": "11977776666"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cliente atualizado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Customer"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chave ausente, inválida ou revogada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_api_key",
+                    "message": "Chave de API inválida ou revogada."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A chave não tem o escopo da rota, ou a empresa ainda não opera em produção.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "missing_scope",
+                    "message": "A chave não tem o escopo necessário."
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado para este negócio.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "not_found",
+                    "message": "Não encontrado."
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos. Veja `details`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_request",
+                    "message": "Corpo inválido.",
+                    "details": {
+                      "amount": [
+                        "Valor inválido."
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições. Veja o header `Retry-After`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "rate_limited",
+                    "message": "Muitas requisições. Tente novamente em instantes."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Clientes"
+        ]
+      }
+    },
+    "/v1/products": {
+      "post": {
+        "operationId": "criarProduto",
+        "summary": "Criar um produto",
+        "description": "Cadastra um produto. O preço do produto é a base de checkouts e de cobranças com `product_id`.\n\nEscopo: `products:write`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "price"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Nome (até 120).",
+                    "maxLength": 120
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Descrição (até 2000).",
+                    "maxLength": 2000
+                  },
+                  "type": {
+                    "type": "string",
+                    "description": "Tipo.",
+                    "enum": [
+                      "physical",
+                      "digital",
+                      "service"
+                    ],
+                    "default": "physical"
+                  },
+                  "status": {
+                    "type": "string",
+                    "description": "Status.",
+                    "enum": [
+                      "draft",
+                      "active",
+                      "archived"
+                    ],
+                    "default": "active"
+                  },
+                  "images": {
+                    "type": "array",
+                    "maxItems": 8,
+                    "items": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "description": "Até 8 URLs HTTPS."
+                  },
+                  "price": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{1,9}(\\.\\d{1,2})?$"
+                      },
+                      {
+                        "type": "number"
+                      }
+                    ],
+                    "description": "Preço. Em reais, com até 2 casas e ponto decimal (ex.: \"149.90\"). Mínimo 0.01.",
+                    "examples": [
+                      "149.90"
+                    ]
+                  },
+                  "external_reference": {
+                    "type": "string",
+                    "description": "O seu identificador (SKU). Único por negócio.",
+                    "maxLength": 100
+                  },
+                  "statement_description": {
+                    "type": "string",
+                    "description": "Texto que o pagador vê no Pix (até 140).",
+                    "maxLength": 140
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string",
+                      "maxLength": 500
+                    },
+                    "maxProperties": 20,
+                    "description": "Até 20 pares chave/valor em texto (chave até 40, valor até 500 caracteres). Volta igual nas respostas e nos webhooks.",
+                    "examples": [
+                      {
+                        "order_id": "1001"
+                      }
+                    ]
+                  }
+                }
+              },
+              "examples": {
+                "exemplo": {
+                  "summary": "Exemplo",
+                  "value": {
+                    "name": "Mentoria individual",
+                    "description": "Uma hora de mentoria por videochamada.",
+                    "type": "service",
+                    "price": "149.90",
+                    "external_reference": "sku-mentoria-1h"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Produto criado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Product"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chave ausente, inválida ou revogada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_api_key",
+                    "message": "Chave de API inválida ou revogada."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A chave não tem o escopo da rota, ou a empresa ainda não opera em produção.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "missing_scope",
+                    "message": "A chave não tem o escopo necessário."
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Já existe produto com este `external_reference`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "external_reference_in_use",
+                    "message": "external_reference já usado."
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos. Veja `details`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_request",
+                    "message": "Corpo inválido.",
+                    "details": {
+                      "amount": [
+                        "Valor inválido."
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições. Veja o header `Retry-After`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "rate_limited",
+                    "message": "Muitas requisições. Tente novamente em instantes."
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Indisponibilidade temporária.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "service_unavailable",
+                    "message": "Serviço temporariamente indisponível."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Produtos"
+        ]
+      },
+      "get": {
+        "operationId": "listarProdutos",
+        "summary": "Listar produtos",
+        "description": "Lista os produtos do negócio.\n\nEscopo: `products:read`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Itens por página, de 1 a 100.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "starting_after",
+            "in": "query",
+            "required": false,
+            "description": "O `next_cursor` da página anterior.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Filtra por status.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "active",
+                "archived"
+              ]
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "description": "Filtra por tipo.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "physical",
+                "digital",
+                "service"
+              ]
+            }
+          },
+          {
+            "name": "external_reference",
+            "in": "query",
+            "required": false,
+            "description": "Filtra pelo seu identificador.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Página de produtos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "description": "Sempre `list`.",
+                      "enum": [
+                        "list"
+                      ]
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Product"
+                      }
+                    },
+                    "has_more": {
+                      "type": "boolean",
+                      "description": "Há mais itens depois desta página."
+                    },
+                    "next_cursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Passe em `starting_after` para a próxima página."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chave ausente, inválida ou revogada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_api_key",
+                    "message": "Chave de API inválida ou revogada."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A chave não tem o escopo da rota, ou a empresa ainda não opera em produção.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "missing_scope",
+                    "message": "A chave não tem o escopo necessário."
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos. Veja `details`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_request",
+                    "message": "Corpo inválido.",
+                    "details": {
+                      "amount": [
+                        "Valor inválido."
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições. Veja o header `Retry-After`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "rate_limited",
+                    "message": "Muitas requisições. Tente novamente em instantes."
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Indisponibilidade temporária.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "service_unavailable",
+                    "message": "Serviço temporariamente indisponível."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Produtos"
+        ]
+      }
+    },
+    "/v1/products/{product_id}": {
+      "get": {
+        "operationId": "consultarProduto",
+        "summary": "Consultar um produto",
+        "description": "Devolve um produto.\n\nEscopo: `products:read`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "product_id",
+            "in": "path",
+            "required": true,
+            "description": "Id do produto.",
+            "schema": {
+              "type": "string",
+              "pattern": "^prod_[A-Za-z0-9_-]{16}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "O produto.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Product"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chave ausente, inválida ou revogada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_api_key",
+                    "message": "Chave de API inválida ou revogada."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A chave não tem o escopo da rota, ou a empresa ainda não opera em produção.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "missing_scope",
+                    "message": "A chave não tem o escopo necessário."
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado para este negócio.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "not_found",
+                    "message": "Não encontrado."
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições. Veja o header `Retry-After`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "rate_limited",
+                    "message": "Muitas requisições. Tente novamente em instantes."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Produtos"
+        ]
+      },
+      "patch": {
+        "operationId": "atualizarProduto",
+        "summary": "Atualizar um produto",
+        "description": "Atualiza só os campos enviados. `null` limpa um campo opcional. Mudar o preço vale para as próximas compras; pagamentos já criados não mudam.\n\nEscopo: `products:write`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "product_id",
+            "in": "path",
+            "required": true,
+            "description": "Id do produto.",
+            "schema": {
+              "type": "string",
+              "pattern": "^prod_[A-Za-z0-9_-]{16}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Nome.",
+                    "maxLength": 120
+                  },
+                  "description": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Descrição.",
+                    "maxLength": 2000
+                  },
+                  "type": {
+                    "type": "string",
+                    "description": "Tipo.",
+                    "enum": [
+                      "physical",
+                      "digital",
+                      "service"
+                    ]
+                  },
+                  "status": {
+                    "type": "string",
+                    "description": "Status.",
+                    "enum": [
+                      "draft",
+                      "active",
+                      "archived"
+                    ]
+                  },
+                  "images": {
+                    "type": "array",
+                    "maxItems": 8,
+                    "items": {
+                      "type": "string",
+                      "format": "uri"
+                    }
+                  },
+                  "price": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{1,9}(\\.\\d{1,2})?$"
+                      },
+                      {
+                        "type": "number"
+                      }
+                    ],
+                    "description": "Novo preço. Em reais, com até 2 casas e ponto decimal (ex.: \"149.90\"). Mínimo 0.01.",
+                    "examples": [
+                      "149.90"
+                    ]
+                  },
+                  "external_reference": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "O seu identificador.",
+                    "maxLength": 100
+                  },
+                  "statement_description": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Texto no Pix.",
+                    "maxLength": 140
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string",
+                      "maxLength": 500
+                    },
+                    "maxProperties": 20,
+                    "description": "Até 20 pares chave/valor em texto (chave até 40, valor até 500 caracteres). Volta igual nas respostas e nos webhooks.",
+                    "examples": [
+                      {
+                        "order_id": "1001"
+                      }
+                    ]
+                  }
+                }
+              },
+              "examples": {
+                "exemplo": {
+                  "summary": "Exemplo",
+                  "value": {
+                    "price": "169.90"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Produto atualizado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Product"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chave ausente, inválida ou revogada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_api_key",
+                    "message": "Chave de API inválida ou revogada."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A chave não tem o escopo da rota, ou a empresa ainda não opera em produção.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "missing_scope",
+                    "message": "A chave não tem o escopo necessário."
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado para este negócio.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "not_found",
+                    "message": "Não encontrado."
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos. Veja `details`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_request",
+                    "message": "Corpo inválido.",
+                    "details": {
+                      "amount": [
+                        "Valor inválido."
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições. Veja o header `Retry-After`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "rate_limited",
+                    "message": "Muitas requisições. Tente novamente em instantes."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Produtos"
+        ]
+      }
+    },
+    "/v1/balance": {
+      "get": {
+        "operationId": "consultarSaldo",
+        "summary": "Consultar o saldo",
+        "description": "Saldo do negócio, em centavos. Chave de teste mostra o saldo de teste. Não existe rota que tire dinheiro do saldo: saques são feitos pelo painel.\n\nEscopo: `balance:read`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "O saldo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Balance"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chave ausente, inválida ou revogada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_api_key",
+                    "message": "Chave de API inválida ou revogada."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A chave não tem o escopo da rota, ou a empresa ainda não opera em produção.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "missing_scope",
+                    "message": "A chave não tem o escopo necessário."
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições. Veja o header `Retry-After`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "rate_limited",
+                    "message": "Muitas requisições. Tente novamente em instantes."
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Indisponibilidade temporária.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "service_unavailable",
+                    "message": "Serviço temporariamente indisponível."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Saldo"
+        ]
+      }
+    },
+    "/v1/webhooks": {
+      "post": {
+        "operationId": "criarWebhook",
+        "summary": "Criar um endpoint de webhook",
+        "description": "Cadastra uma URL para receber eventos. O `secret` aparece **só nesta resposta**. Limite: 10 endpoints ativos.\n\nEscopo: `webhooks:write`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "url"
+                ],
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "description": "URL HTTPS pública.",
+                    "format": "uri",
+                    "maxLength": 2048
+                  },
+                  "events": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 10,
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "payment.succeeded",
+                        "payment.expired",
+                        "payment.failed",
+                        "payment.canceled",
+                        "payment.refunded",
+                        "payment.disputed",
+                        "payment.dispute_won",
+                        "payment.dispute_lost",
+                        "*"
+                      ]
+                    },
+                    "default": [
+                      "*"
+                    ],
+                    "description": "Eventos assinados. Padrão: todos."
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Descrição (até 200).",
+                    "maxLength": 200
+                  }
+                }
+              },
+              "examples": {
+                "exemplo": {
+                  "summary": "Exemplo",
+                  "value": {
+                    "url": "https://sualoja.com/webhooks/valora",
+                    "events": [
+                      "payment.succeeded",
+                      "payment.failed"
+                    ],
+                    "description": "Loja principal"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Endpoint criado, com o segredo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookEndpointWithSecret"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chave ausente, inválida ou revogada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_api_key",
+                    "message": "Chave de API inválida ou revogada."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A chave não tem o escopo da rota, ou a empresa ainda não opera em produção.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "missing_scope",
+                    "message": "A chave não tem o escopo necessário."
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Limite de endpoints atingido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "limit_reached",
+                    "message": "Limite de 10 endpoints atingido."
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Corpo inválido ou URL recusada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_url",
+                    "message": "A URL deve usar https."
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições. Veja o header `Retry-After`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "rate_limited",
+                    "message": "Muitas requisições. Tente novamente em instantes."
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Indisponibilidade temporária.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "service_unavailable",
+                    "message": "Serviço temporariamente indisponível."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Webhooks"
+        ]
+      },
+      "get": {
+        "operationId": "listarWebhooks",
+        "summary": "Listar endpoints de webhook",
+        "description": "Lista os endpoints ativos.\n\nEscopo: `webhooks:read`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Endpoints.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "description": "Sempre `list`.",
+                      "enum": [
+                        "list"
+                      ]
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/WebhookEndpoint"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chave ausente, inválida ou revogada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_api_key",
+                    "message": "Chave de API inválida ou revogada."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A chave não tem o escopo da rota, ou a empresa ainda não opera em produção.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "missing_scope",
+                    "message": "A chave não tem o escopo necessário."
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições. Veja o header `Retry-After`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "rate_limited",
+                    "message": "Muitas requisições. Tente novamente em instantes."
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Indisponibilidade temporária.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "service_unavailable",
+                    "message": "Serviço temporariamente indisponível."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Webhooks"
+        ]
+      }
+    },
+    "/v1/webhooks/{endpoint_id}": {
+      "get": {
+        "operationId": "consultarWebhook",
+        "summary": "Consultar um endpoint de webhook",
+        "description": "Devolve um endpoint ativo. O segredo nunca aparece aqui.\n\nEscopo: `webhooks:read`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "endpoint_id",
+            "in": "path",
+            "required": true,
+            "description": "Id do endpoint.",
+            "schema": {
+              "type": "string",
+              "pattern": "^we_[A-Za-z0-9_-]{16}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "O endpoint.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookEndpoint"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chave ausente, inválida ou revogada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_api_key",
+                    "message": "Chave de API inválida ou revogada."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A chave não tem o escopo da rota, ou a empresa ainda não opera em produção.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "missing_scope",
+                    "message": "A chave não tem o escopo necessário."
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado para este negócio.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "not_found",
+                    "message": "Não encontrado."
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições. Veja o header `Retry-After`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "rate_limited",
+                    "message": "Muitas requisições. Tente novamente em instantes."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Webhooks"
+        ]
+      },
+      "delete": {
+        "operationId": "removerWebhook",
+        "summary": "Remover um endpoint de webhook",
+        "description": "Desativa o endpoint. Entregas pendentes deixam de ser tentadas; o histórico continua visível.\n\nEscopo: `webhooks:write`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "endpoint_id",
+            "in": "path",
+            "required": true,
+            "description": "Id do endpoint.",
+            "schema": {
+              "type": "string",
+              "pattern": "^we_[A-Za-z0-9_-]{16}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Endpoint removido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "description": "Id."
+                    },
+                    "object": {
+                      "type": "string",
+                      "description": "`webhook_endpoint`."
+                    },
+                    "deleted": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chave ausente, inválida ou revogada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_api_key",
+                    "message": "Chave de API inválida ou revogada."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A chave não tem o escopo da rota, ou a empresa ainda não opera em produção.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "missing_scope",
+                    "message": "A chave não tem o escopo necessário."
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado para este negócio.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "not_found",
+                    "message": "Não encontrado."
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições. Veja o header `Retry-After`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "rate_limited",
+                    "message": "Muitas requisições. Tente novamente em instantes."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Webhooks"
+        ]
+      }
+    },
+    "/v1/webhooks/{endpoint_id}/rotate_secret": {
+      "post": {
+        "operationId": "rotacionarSegredoWebhook",
+        "summary": "Rotacionar o segredo",
+        "description": "Gera um novo segredo. O antigo para de valer na hora. O novo aparece **só nesta resposta**.\n\nEscopo: `webhooks:write`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "endpoint_id",
+            "in": "path",
+            "required": true,
+            "description": "Id do endpoint.",
+            "schema": {
+              "type": "string",
+              "pattern": "^we_[A-Za-z0-9_-]{16}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Endpoint com o novo segredo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookEndpointWithSecret"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chave ausente, inválida ou revogada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_api_key",
+                    "message": "Chave de API inválida ou revogada."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A chave não tem o escopo da rota, ou a empresa ainda não opera em produção.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "missing_scope",
+                    "message": "A chave não tem o escopo necessário."
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado para este negócio.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "not_found",
+                    "message": "Não encontrado."
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições. Veja o header `Retry-After`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "rate_limited",
+                    "message": "Muitas requisições. Tente novamente em instantes."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Webhooks"
+        ]
+      }
+    },
+    "/v1/webhooks/{endpoint_id}/deliveries": {
+      "get": {
+        "operationId": "listarEntregas",
+        "summary": "Listar entregas",
+        "description": "Lista o que foi enviado ao endpoint e o resultado de cada entrega. Inclui endpoints removidos.\n\nEscopo: `webhooks:read`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "endpoint_id",
+            "in": "path",
+            "required": true,
+            "description": "Id do endpoint.",
+            "schema": {
+              "type": "string",
+              "pattern": "^we_[A-Za-z0-9_-]{16}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Itens por página, de 1 a 100.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "starting_after",
+            "in": "query",
+            "required": false,
+            "description": "O `next_cursor` da página anterior.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Filtra por estado.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "processing",
+                "delivered",
+                "failed"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Página de entregas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "object": {
+                      "type": "string",
+                      "description": "Sempre `list`.",
+                      "enum": [
+                        "list"
+                      ]
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/WebhookDelivery"
+                      }
+                    },
+                    "has_more": {
+                      "type": "boolean",
+                      "description": "Há mais itens depois desta página."
+                    },
+                    "next_cursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "Passe em `starting_after` para a próxima página."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chave ausente, inválida ou revogada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_api_key",
+                    "message": "Chave de API inválida ou revogada."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A chave não tem o escopo da rota, ou a empresa ainda não opera em produção.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "missing_scope",
+                    "message": "A chave não tem o escopo necessário."
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado para este negócio.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "not_found",
+                    "message": "Não encontrado."
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos. Veja `details`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_request",
+                    "message": "Corpo inválido.",
+                    "details": {
+                      "amount": [
+                        "Valor inválido."
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições. Veja o header `Retry-After`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "rate_limited",
+                    "message": "Muitas requisições. Tente novamente em instantes."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Webhooks"
+        ]
+      }
+    },
+    "/v1/webhooks/{endpoint_id}/deliveries/{delivery_id}/resend": {
+      "post": {
+        "operationId": "reenviarEntrega",
+        "summary": "Reenviar uma entrega",
+        "description": "Coloca a entrega de novo na fila, com o mesmo evento. Serve para entregas que falharam ou para reprocessar uma já entregue.\n\nEscopo: `webhooks:write`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "endpoint_id",
+            "in": "path",
+            "required": true,
+            "description": "Id do endpoint.",
+            "schema": {
+              "type": "string",
+              "pattern": "^we_[A-Za-z0-9_-]{16}$"
+            }
+          },
+          {
+            "name": "delivery_id",
+            "in": "path",
+            "required": true,
+            "description": "Id da entrega.",
+            "schema": {
+              "type": "string",
+              "pattern": "^whd_[A-Za-z0-9_-]{16}$"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Entrega na fila.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookDelivery"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chave ausente, inválida ou revogada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_api_key",
+                    "message": "Chave de API inválida ou revogada."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A chave não tem o escopo da rota, ou a empresa ainda não opera em produção.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "missing_scope",
+                    "message": "A chave não tem o escopo necessário."
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado para este negócio.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "not_found",
+                    "message": "Não encontrado."
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A entrega já está na fila ou em andamento.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "not_resendable",
+                    "message": "A entrega já está na fila ou em andamento."
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições. Veja o header `Retry-After`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "rate_limited",
+                    "message": "Muitas requisições. Tente novamente em instantes."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Webhooks"
+        ]
+      }
+    }
+  },
+  "webhooks": {
+    "payment.succeeded": {
+      "post": {
+        "summary": "payment.succeeded",
+        "description": "Enviado para os endpoints inscritos. Verifique `X-Valora-Signature` antes de agir.",
+        "parameters": [
+          {
+            "name": "X-Valora-Event",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "payment.succeeded"
+              ]
+            },
+            "description": "Tipo do evento."
+          },
+          {
+            "name": "X-Valora-Delivery",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Id da entrega (`whd_...`)."
+          },
+          {
+            "name": "X-Valora-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "`t=<unix>,v1=<hmac_sha256_hex(segredo, \"<t>.<corpo cru>\")>`."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Event"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Responda 2xx em até 10 segundos."
+          }
+        }
+      }
+    },
+    "payment.expired": {
+      "post": {
+        "summary": "payment.expired",
+        "description": "Enviado para os endpoints inscritos. Verifique `X-Valora-Signature` antes de agir.",
+        "parameters": [
+          {
+            "name": "X-Valora-Event",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "payment.expired"
+              ]
+            },
+            "description": "Tipo do evento."
+          },
+          {
+            "name": "X-Valora-Delivery",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Id da entrega (`whd_...`)."
+          },
+          {
+            "name": "X-Valora-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "`t=<unix>,v1=<hmac_sha256_hex(segredo, \"<t>.<corpo cru>\")>`."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Event"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Responda 2xx em até 10 segundos."
+          }
+        }
+      }
+    },
+    "payment.failed": {
+      "post": {
+        "summary": "payment.failed",
+        "description": "Enviado para os endpoints inscritos. Verifique `X-Valora-Signature` antes de agir.",
+        "parameters": [
+          {
+            "name": "X-Valora-Event",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "payment.failed"
+              ]
+            },
+            "description": "Tipo do evento."
+          },
+          {
+            "name": "X-Valora-Delivery",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Id da entrega (`whd_...`)."
+          },
+          {
+            "name": "X-Valora-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "`t=<unix>,v1=<hmac_sha256_hex(segredo, \"<t>.<corpo cru>\")>`."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Event"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Responda 2xx em até 10 segundos."
+          }
+        }
+      }
+    },
+    "payment.canceled": {
+      "post": {
+        "summary": "payment.canceled",
+        "description": "Enviado para os endpoints inscritos. Verifique `X-Valora-Signature` antes de agir.",
+        "parameters": [
+          {
+            "name": "X-Valora-Event",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "payment.canceled"
+              ]
+            },
+            "description": "Tipo do evento."
+          },
+          {
+            "name": "X-Valora-Delivery",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Id da entrega (`whd_...`)."
+          },
+          {
+            "name": "X-Valora-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "`t=<unix>,v1=<hmac_sha256_hex(segredo, \"<t>.<corpo cru>\")>`."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Event"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Responda 2xx em até 10 segundos."
+          }
+        }
+      }
+    },
+    "payment.refunded": {
+      "post": {
+        "summary": "payment.refunded",
+        "description": "Enviado para os endpoints inscritos. Verifique `X-Valora-Signature` antes de agir.",
+        "parameters": [
+          {
+            "name": "X-Valora-Event",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "payment.refunded"
+              ]
+            },
+            "description": "Tipo do evento."
+          },
+          {
+            "name": "X-Valora-Delivery",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Id da entrega (`whd_...`)."
+          },
+          {
+            "name": "X-Valora-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "`t=<unix>,v1=<hmac_sha256_hex(segredo, \"<t>.<corpo cru>\")>`."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Event"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Responda 2xx em até 10 segundos."
+          }
+        }
+      }
+    },
+    "payment.disputed": {
+      "post": {
+        "summary": "payment.disputed",
+        "description": "Enviado para os endpoints inscritos. Verifique `X-Valora-Signature` antes de agir.",
+        "parameters": [
+          {
+            "name": "X-Valora-Event",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "payment.disputed"
+              ]
+            },
+            "description": "Tipo do evento."
+          },
+          {
+            "name": "X-Valora-Delivery",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Id da entrega (`whd_...`)."
+          },
+          {
+            "name": "X-Valora-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "`t=<unix>,v1=<hmac_sha256_hex(segredo, \"<t>.<corpo cru>\")>`."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Event"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Responda 2xx em até 10 segundos."
+          }
+        }
+      }
+    },
+    "payment.dispute_won": {
+      "post": {
+        "summary": "payment.dispute_won",
+        "description": "Enviado para os endpoints inscritos. Verifique `X-Valora-Signature` antes de agir.",
+        "parameters": [
+          {
+            "name": "X-Valora-Event",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "payment.dispute_won"
+              ]
+            },
+            "description": "Tipo do evento."
+          },
+          {
+            "name": "X-Valora-Delivery",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Id da entrega (`whd_...`)."
+          },
+          {
+            "name": "X-Valora-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "`t=<unix>,v1=<hmac_sha256_hex(segredo, \"<t>.<corpo cru>\")>`."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Event"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Responda 2xx em até 10 segundos."
+          }
+        }
+      }
+    },
+    "payment.dispute_lost": {
+      "post": {
+        "summary": "payment.dispute_lost",
+        "description": "Enviado para os endpoints inscritos. Verifique `X-Valora-Signature` antes de agir.",
+        "parameters": [
+          {
+            "name": "X-Valora-Event",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "payment.dispute_lost"
+              ]
+            },
+            "description": "Tipo do evento."
+          },
+          {
+            "name": "X-Valora-Delivery",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Id da entrega (`whd_...`)."
+          },
+          {
+            "name": "X-Valora-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "`t=<unix>,v1=<hmac_sha256_hex(segredo, \"<t>.<corpo cru>\")>`."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Event"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Responda 2xx em até 10 segundos."
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Chave de API `sk_vl_...` criada no painel em Desenvolvedores → Chaves de API."
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": [
+              "type",
+              "message"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "description": "Código estável do erro. Veja a página Erros.",
+                "examples": [
+                  "invalid_request"
+                ]
+              },
+              "message": {
+                "type": "string",
+                "description": "Explicação em português. Não compare o texto.",
+                "examples": [
+                  "Corpo inválido."
+                ]
+              },
+              "details": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "description": "Só em erros de validação: problemas por campo."
+              }
+            }
+          }
+        }
+      },
+      "Payment": {
+        "type": "object",
+        "required": [
+          "id",
+          "object",
+          "livemode",
+          "method",
+          "status",
+          "amount",
+          "fee",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Id do pagamento.",
+            "pattern": "^pay_[A-Za-z0-9_-]{16}$",
+            "examples": [
+              "pay_Xk2v9QeR7tLmN3bA"
+            ]
+          },
+          "object": {
+            "type": "string",
+            "description": "Sempre `payment`.",
+            "enum": [
+              "payment"
+            ]
+          },
+          "livemode": {
+            "type": "boolean",
+            "description": "`true` em produção, `false` no ambiente de teste."
+          },
+          "method": {
+            "type": "string",
+            "description": "Forma de pagamento.",
+            "enum": [
+              "pix",
+              "card",
+              "boleto"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "description": "Status. `requires_payment`: aguardando; `processing`: em análise; `succeeded`: pago; `underpaid`/`overpaid`: pago com valor diferente (em análise); `expired`; `failed`; `canceled`; `partially_refunded`; `refunded`; `disputed`: cartão contestado.",
+            "enum": [
+              "requires_payment",
+              "processing",
+              "succeeded",
+              "underpaid",
+              "overpaid",
+              "expired",
+              "failed",
+              "canceled",
+              "partially_refunded",
+              "refunded",
+              "disputed"
+            ]
+          },
+          "amount": {
+            "type": "object",
+            "description": "Valor cobrado.",
+            "required": [
+              "value",
+              "currency"
+            ],
+            "properties": {
+              "value": {
+                "type": "integer",
+                "description": "Valor em centavos.",
+                "examples": [
+                  14990
+                ]
+              },
+              "currency": {
+                "type": "string",
+                "description": "Moeda.",
+                "enum": [
+                  "BRL"
+                ]
+              }
+            }
+          },
+          "customer_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Cliente associado."
+          },
+          "external_reference": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "O seu identificador."
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Descrição da cobrança."
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "maxProperties": 20,
+            "description": "Até 20 pares chave/valor em texto (chave até 40, valor até 500 caracteres). Volta igual nas respostas e nos webhooks.",
+            "examples": [
+              {
+                "order_id": "1001"
+              }
+            ]
+          },
+          "fee": {
+            "type": "object",
+            "description": "Taxa da Valora neste pagamento.",
+            "properties": {
+              "bps": {
+                "type": "integer",
+                "description": "Parte percentual em pontos-base (199 = 1,99%)."
+              },
+              "fixed": {
+                "type": "integer",
+                "description": "Parte fixa, em centavos."
+              },
+              "amount": {
+                "type": "integer",
+                "description": "Taxa total, em centavos."
+              }
+            }
+          },
+          "refunded_amount": {
+            "type": "integer",
+            "description": "Total já devolvido ao pagador, em centavos."
+          },
+          "dispute": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Contestação (chargeback) do cartão.",
+            "properties": {
+              "status": {
+                "type": "string",
+                "description": "Estado.",
+                "enum": [
+                  "open",
+                  "won",
+                  "lost"
+                ]
+              },
+              "opened_at": {
+                "type": "string",
+                "description": "Abertura.",
+                "format": "date-time"
+              },
+              "closed_at": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Encerramento.",
+                "format": "date-time"
+              }
+            }
+          },
+          "items": {
+            "type": "array",
+            "description": "Cópia do produto no momento da compra.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "product_id": {
+                  "type": "string",
+                  "description": "Produto."
+                },
+                "name": {
+                  "type": "string",
+                  "description": "Nome."
+                },
+                "unit_amount": {
+                  "type": "integer",
+                  "description": "Preço unitário em centavos."
+                },
+                "quantity": {
+                  "type": "integer",
+                  "description": "Quantidade."
+                }
+              }
+            }
+          },
+          "splits": {
+            "type": "array",
+            "description": "Divisão do valor líquido entre negócios do mesmo dono.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "business_id": {
+                  "type": "string",
+                  "description": "Negócio."
+                },
+                "share_bps": {
+                  "type": "integer",
+                  "description": "Parte em pontos-base."
+                },
+                "amount": {
+                  "type": "integer",
+                  "description": "Valor em centavos."
+                },
+                "status": {
+                  "type": "string",
+                  "description": "Estado.",
+                  "enum": [
+                    "pending",
+                    "settled"
+                  ]
+                }
+              }
+            }
+          },
+          "expires_at": {
+            "type": "string",
+            "description": "Prazo para pagar.",
+            "format": "date-time"
+          },
+          "succeeded_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Quando o pagamento foi confirmado.",
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "description": "Criação.",
+            "format": "date-time"
+          },
+          "pix": {
+            "type": "object",
+            "description": "Só em pagamentos Pix.",
+            "properties": {
+              "txid": {
+                "type": "string",
+                "description": "Id da cobrança Pix."
+              },
+              "e2e_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Identificador da transação no Banco Central (depois do pagamento)."
+              },
+              "brcode": {
+                "type": "string",
+                "description": "Código copia e cola."
+              },
+              "qr_image": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "QR Code em PNG (data URL)."
+              },
+              "payer": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "description": "Quem pagou (documento mascarado).",
+                "properties": {
+                  "name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Nome."
+                  },
+                  "document_masked": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Documento mascarado."
+                  }
+                }
+              }
+            }
+          },
+          "card": {
+            "type": "object",
+            "description": "Só em pagamentos com cartão.",
+            "properties": {
+              "brand": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Bandeira."
+              },
+              "last4": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Últimos 4 dígitos."
+              },
+              "installments": {
+                "type": "integer",
+                "description": "Parcelas (1, 2, 3, 6 ou 12)."
+              },
+              "decline_reason": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Motivo da recusa informado pelo emissor."
+              }
+            }
+          },
+          "boleto": {
+            "type": "object",
+            "description": "Só em pagamentos por boleto.",
+            "properties": {
+              "barcode": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Linha digitável."
+              },
+              "link": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Página do boleto."
+              },
+              "pdf": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "PDF do boleto."
+              },
+              "due_date": {
+                "type": "string",
+                "description": "Vencimento (AAAA-MM-DD).",
+                "format": "date"
+              },
+              "pix": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "description": "Pix embutido.",
+                "properties": {
+                  "brcode": {
+                    "type": "string",
+                    "description": "Copia e cola."
+                  },
+                  "qr_image": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "QR Code (data URL)."
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "Refund": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Id da devolução.",
+            "pattern": "^ref_[A-Za-z0-9_-]{16}$",
+            "examples": [
+              "ref_Xk2v9QeR7tLmN3bA"
+            ]
+          },
+          "object": {
+            "type": "string",
+            "description": "Sempre `refund`.",
+            "enum": [
+              "refund"
+            ]
+          },
+          "payment_id": {
+            "type": "string",
+            "description": "Pagamento devolvido."
+          },
+          "amount": {
+            "type": "integer",
+            "description": "Valor devolvido, em centavos."
+          },
+          "status": {
+            "type": "string",
+            "description": "Estado.",
+            "enum": [
+              "pending",
+              "succeeded",
+              "failed"
+            ]
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Motivo informado."
+          },
+          "created_at": {
+            "type": "string",
+            "description": "Criação.",
+            "format": "date-time"
+          },
+          "payment": {
+            "$ref": "#/components/schemas/Payment"
+          }
+        }
+      },
+      "CheckoutSession": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Id da compra.",
+            "pattern": "^cs_[A-Za-z0-9_-]{16}$",
+            "examples": [
+              "cs_Xk2v9QeR7tLmN3bA"
+            ]
+          },
+          "object": {
+            "type": "string",
+            "description": "Sempre `checkout_session`.",
+            "enum": [
+              "checkout_session"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "description": "`open`: aguardando; `processing`: em análise; `paid`: pago; `failed`: tentativa falhou; `expired`: venceu.",
+            "enum": [
+              "open",
+              "processing",
+              "paid",
+              "failed",
+              "expired"
+            ]
+          },
+          "livemode": {
+            "type": "boolean",
+            "description": "Ambiente da compra."
+          },
+          "checkout_url": {
+            "type": "string",
+            "description": "Link para mandar ao cliente.",
+            "format": "uri",
+            "examples": [
+              "https://pay.valorapayments.com.br/s/cs_Xk2v9QeR7tLmN3bA"
+            ]
+          },
+          "product_cart": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "product_id": {
+                  "type": "string",
+                  "description": "Produto."
+                },
+                "name": {
+                  "type": "string",
+                  "description": "Nome no momento da compra."
+                },
+                "quantity": {
+                  "type": "integer",
+                  "description": "Quantidade."
+                },
+                "unit_amount": {
+                  "type": "integer",
+                  "description": "Preço unitário em centavos."
+                }
+              }
+            }
+          },
+          "amount": {
+            "type": "object",
+            "properties": {
+              "subtotal": {
+                "type": "integer",
+                "description": "Subtotal em centavos."
+              },
+              "total": {
+                "type": "integer",
+                "description": "Total em centavos."
+              },
+              "currency": {
+                "type": "string",
+                "description": "Moeda.",
+                "enum": [
+                  "BRL"
+                ]
+              }
+            }
+          },
+          "allowed_payment_method_types": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "pix",
+                "card",
+                "boleto"
+              ]
+            },
+            "description": "Formas aceitas."
+          },
+          "customer_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Cliente associado."
+          },
+          "payment_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Pagamento gerado quando o cliente escolhe a forma de pagamento."
+          },
+          "method": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Forma escolhida pelo cliente.",
+            "enum": [
+              "pix",
+              "card",
+              "boleto"
+            ]
+          },
+          "success_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Retorno depois de pagar."
+          },
+          "cancel_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Retorno ao desistir."
+          },
+          "external_reference": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "O seu identificador."
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "maxProperties": 20,
+            "description": "Até 20 pares chave/valor em texto (chave até 40, valor até 500 caracteres). Volta igual nas respostas e nos webhooks.",
+            "examples": [
+              {
+                "order_id": "1001"
+              }
+            ]
+          },
+          "expires_at": {
+            "type": "string",
+            "description": "Prazo da compra.",
+            "format": "date-time"
+          },
+          "completed_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Quando foi paga.",
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "description": "Criação.",
+            "format": "date-time"
+          }
+        }
+      },
+      "Customer": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Id do cliente.",
+            "pattern": "^cus_[A-Za-z0-9_-]{16}$",
+            "examples": [
+              "cus_Xk2v9QeR7tLmN3bA"
+            ]
+          },
+          "object": {
+            "type": "string",
+            "description": "Sempre `customer`.",
+            "enum": [
+              "customer"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "description": "Nome."
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "E-mail."
+          },
+          "document": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "CPF ou CNPJ, só dígitos."
+          },
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Telefone, só dígitos."
+          },
+          "external_reference": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "O seu identificador."
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "maxProperties": 20,
+            "description": "Até 20 pares chave/valor em texto (chave até 40, valor até 500 caracteres). Volta igual nas respostas e nos webhooks.",
+            "examples": [
+              {
+                "order_id": "1001"
+              }
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "description": "Criação.",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "description": "Última alteração.",
+            "format": "date-time"
+          }
+        }
+      },
+      "Product": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Id do produto.",
+            "pattern": "^prod_[A-Za-z0-9_-]{16}$",
+            "examples": [
+              "prod_Xk2v9QeR7tLmN3bA"
+            ]
+          },
+          "object": {
+            "type": "string",
+            "description": "Sempre `product`.",
+            "enum": [
+              "product"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "description": "Nome."
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Descrição."
+          },
+          "type": {
+            "type": "string",
+            "description": "Tipo.",
+            "enum": [
+              "physical",
+              "digital",
+              "service"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "description": "Status.",
+            "enum": [
+              "draft",
+              "active",
+              "archived"
+            ]
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            },
+            "description": "URLs das imagens."
+          },
+          "price": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "integer",
+                "description": "Preço em centavos.",
+                "examples": [
+                  14990
+                ]
+              },
+              "currency": {
+                "type": "string",
+                "description": "Moeda.",
+                "enum": [
+                  "BRL"
+                ]
+              }
+            }
+          },
+          "external_reference": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "O seu identificador (SKU)."
+          },
+          "statement_description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Texto que o pagador vê no Pix."
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "maxProperties": 20,
+            "description": "Até 20 pares chave/valor em texto (chave até 40, valor até 500 caracteres). Volta igual nas respostas e nos webhooks.",
+            "examples": [
+              {
+                "order_id": "1001"
+              }
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "description": "Criação.",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "description": "Última alteração.",
+            "format": "date-time"
+          },
+          "archived_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Quando foi arquivado.",
+            "format": "date-time"
+          }
+        }
+      },
+      "Balance": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "description": "Sempre `balance`.",
+            "enum": [
+              "balance"
+            ]
+          },
+          "currency": {
+            "type": "string",
+            "description": "Moeda.",
+            "enum": [
+              "BRL"
+            ]
+          },
+          "available": {
+            "type": "integer",
+            "description": "Disponível para saque, em centavos.",
+            "examples": [
+              125430
+            ]
+          },
+          "pending": {
+            "type": "integer",
+            "description": "A liberar (vendas no cartão), em centavos.",
+            "examples": [
+              48000
+            ]
+          },
+          "updated_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Última movimentação.",
+            "format": "date-time"
+          }
+        }
+      },
+      "WebhookEndpoint": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Id do endpoint.",
+            "pattern": "^we_[A-Za-z0-9_-]{16}$",
+            "examples": [
+              "we_Xk2v9QeR7tLmN3bA"
+            ]
+          },
+          "object": {
+            "type": "string",
+            "description": "Sempre `webhook_endpoint`.",
+            "enum": [
+              "webhook_endpoint"
+            ]
+          },
+          "url": {
+            "type": "string",
+            "description": "URL que recebe os eventos.",
+            "format": "uri"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Descrição."
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "payment.succeeded",
+                "payment.expired",
+                "payment.failed",
+                "payment.canceled",
+                "payment.refunded",
+                "payment.disputed",
+                "payment.dispute_won",
+                "payment.dispute_lost",
+                "*"
+              ]
+            },
+            "description": "Eventos assinados. `*` = todos."
+          },
+          "status": {
+            "type": "string",
+            "description": "Estado.",
+            "enum": [
+              "active",
+              "disabled"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "description": "Criação.",
+            "format": "date-time"
+          }
+        }
+      },
+      "WebhookEndpointWithSecret": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/WebhookEndpoint"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "secret": {
+                "type": "string",
+                "description": "Segredo HMAC (`whsec_...`). Aparece só nesta resposta: guarde.",
+                "examples": [
+                  "whsec_..."
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "WebhookDelivery": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Id da entrega.",
+            "pattern": "^whd_[A-Za-z0-9_-]{16}$",
+            "examples": [
+              "whd_Xk2v9QeR7tLmN3bA"
+            ]
+          },
+          "object": {
+            "type": "string",
+            "description": "Sempre `webhook_delivery`.",
+            "enum": [
+              "webhook_delivery"
+            ]
+          },
+          "endpoint_id": {
+            "type": "string",
+            "description": "Endpoint."
+          },
+          "event_id": {
+            "type": "string",
+            "description": "Evento entregue."
+          },
+          "status": {
+            "type": "string",
+            "description": "Estado.",
+            "enum": [
+              "pending",
+              "processing",
+              "delivered",
+              "failed"
+            ]
+          },
+          "attempts": {
+            "type": "integer",
+            "description": "Tentativas feitas."
+          },
+          "last_status_code": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Último status HTTP que o seu servidor respondeu."
+          },
+          "last_error": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Último erro."
+          },
+          "next_attempt_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Próxima tentativa (só em `pending`).",
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "description": "Criação.",
+            "format": "date-time"
+          },
+          "delivered_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Quando foi entregue.",
+            "format": "date-time"
+          }
+        }
+      },
+      "Event": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Id do evento. Use para ignorar repetidos.",
+            "pattern": "^evt_[A-Za-z0-9_-]{16}$",
+            "examples": [
+              "evt_Xk2v9QeR7tLmN3bA"
+            ]
+          },
+          "object": {
+            "type": "string",
+            "description": "Sempre `event`.",
+            "enum": [
+              "event"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "description": "Tipo do evento.",
+            "enum": [
+              "payment.succeeded",
+              "payment.expired",
+              "payment.failed",
+              "payment.canceled",
+              "payment.refunded",
+              "payment.disputed",
+              "payment.dispute_won",
+              "payment.dispute_lost"
+            ]
+          },
+          "livemode": {
+            "type": "boolean",
+            "description": "Ambiente."
+          },
+          "created": {
+            "type": "string",
+            "description": "Criação do evento.",
+            "format": "date-time"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "object": {
+                "$ref": "#/components/schemas/Payment"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,71 @@
+---
+title: "Clientes"
+description: "Guarde os dados de quem compra para reutilizar em cobranças e checkouts."
+---
+
+O cliente reúne nome, e-mail, documento e celular de quem compra de você. Com o cliente salvo, você cria compras já preenchidas e encontra todos os pagamentos de uma pessoa.
+
+## Criar um cliente
+
+```bash
+curl https://api.valorapayments.com.br/v1/customers \
+  -H "Authorization: Bearer $VALORA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Ana Souza",
+    "email": "ana@example.com",
+    "document": "12345678909",
+    "phone": "11988887777",
+    "external_reference": "usuario-42"
+  }'
+```
+
+| Campo | Observação |
+| - | - |
+| `name` | obrigatório, até 120 caracteres |
+| `email` | único por negócio. Repetir responde `409 email_in_use` |
+| `document` | CPF (11) ou CNPJ (14 dígitos), só números |
+| `phone` | só dígitos, de 8 a 15, com `+` opcional |
+| `external_reference` | o id do cliente no seu sistema |
+| `metadata` | até 20 chaves de texto |
+
+## Usar o cliente
+
+<Tabs>
+  <Tab title="No checkout">
+    Passe o `customer_id` e o formulário do checkout já abre preenchido:
+
+    ```json
+    {
+      "product_cart": [{ "product_id": "prod_Ab12Cd34Ef56Gh78" }],
+      "customer": { "customer_id": "cus_Zx98Cv76Bn54Mq32" }
+    }
+    ```
+  </Tab>
+  <Tab title="No Pix">
+    Associe o pagamento ao cliente:
+
+    ```json
+    { "method": "pix", "amount": "49.90", "customer_id": "cus_Zx98Cv76Bn54Mq32" }
+    ```
+
+    Depois, liste os pagamentos dele com `GET /v1/payments?customer_id=cus_Zx98Cv76Bn54Mq32`.
+  </Tab>
+</Tabs>
+
+## Encontrar um cliente
+
+`GET /v1/customers` aceita os filtros `email` e `external_reference`:
+
+```bash
+curl "https://api.valorapayments.com.br/v1/customers?email=ana@example.com" \
+  -H "Authorization: Bearer $VALORA_API_KEY"
+```
+
+## Atualizar
+
+Use `PATCH /v1/customers/{customer_id}` com só os campos que mudam. Envie `null` para limpar um campo opcional.
+
+<Note>
+  O documento do cliente nunca é enviado ao checkout para preencher o formulário. O cliente sempre digita o CPF ou CNPJ na hora de pagar.
+</Note>

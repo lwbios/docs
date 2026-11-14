@@ -1,0 +1,211 @@
+---
+title: "Webhooks"
+description: "Receba no seu servidor, em tempo real e com assinatura, cada mudança de status dos pagamentos."
+---
+
+O webhook é um `POST` que a Valora envia para uma URL sua sempre que algo acontece com um pagamento. É a forma certa de saber que um pagamento foi confirmado: não dependa só de consultar o status nem do retorno do cliente para a `success_url`.
+
+## Cadastrar um endpoint
+
+<Tabs>
+  <Tab title="Pelo painel">
+    1. Abra **Desenvolvedores → Webhooks**.
+    2. Clique em **Adicionar destino** e informe a URL (HTTPS).
+    3. Escolha os eventos ou marque todos.
+    4. Copie o segredo (`whsec_...`) e guarde no seu servidor.
+  </Tab>
+  <Tab title="Pela API">
+    ```bash
+    curl https://api.valorapayments.com.br/v1/webhooks \
+      -H "Authorization: Bearer $VALORA_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "url": "https://sualoja.com/webhooks/valora",
+        "events": ["payment.succeeded", "payment.failed", "payment.refunded"],
+        "description": "Loja principal"
+      }'
+    ```
+
+    Sem `events`, o endpoint recebe todos (`["*"]`). A resposta traz o `secret`.
+  </Tab>
+</Tabs>
+
+<Warning>
+  O segredo aparece **só na criação** e na rotação. Se perder, rotacione com `POST /v1/webhooks/{endpoint_id}/rotate_secret`. Nunca coloque o segredo no código ou em logs.
+</Warning>
+
+Regras da URL:
+
+- Precisa ser `https://`, sem usuário e senha na URL.
+- Não pode apontar para a rede interna (`localhost`, IPs privados). Redirecionamentos não são seguidos.
+- Cada negócio pode ter até 10 endpoints ativos.
+
+## O que chega
+
+Cada entrega é um `POST` com corpo JSON e estes headers:
+
+| Header | Conteúdo |
+| - | - |
+| `Content-Type` | `application/json` |
+| `User-Agent` | `Valora-Webhooks/1` |
+| `X-Valora-Event` | tipo do evento, ex.: `payment.succeeded` |
+| `X-Valora-Delivery` | id da entrega (`whd_...`) |
+| `X-Valora-Signature` | assinatura, no formato `t=<unix>,v1=<hex>` |
+
+```json
+{
+  "id": "evt_Mn45Bv67Cx89Za01",
+  "object": "event",
+  "type": "payment.succeeded",
+  "livemode": true,
+  "created": "2026-11-14T15:02:11.000Z",
+  "data": {
+    "object": {
+      "id": "pay_Xk2v9QeR7tLmN3bA",
+      "object": "payment",
+      "method": "pix",
+      "status": "succeeded",
+      "amount": { "value": 14990, "currency": "BRL" },
+      "external_reference": "pedido-1001",
+      "metadata": { "order_id": "1001" },
+      "succeeded_at": "2026-11-14T15:02:10.000Z"
+    }
+  }
+}
+```
+
+`data.object` é o [pagamento](/api-reference/pagamentos/consultar-um-pagamento) completo, no mesmo formato de `GET /v1/payments/{payment_id}`.
+
+## Verificar a assinatura
+
+A assinatura prova que o evento veio da Valora e não foi alterado. Verifique **antes** de qualquer ação.
+
+<Steps>
+  <Step title="Leia o header">
+    Separe `t` (horário do envio, em segundos Unix) e `v1` (assinatura) de `X-Valora-Signature`.
+  </Step>
+  <Step title="Monte o texto assinado">
+    Junte `t`, um ponto e o **corpo cru** da requisição: `"<t>.<corpo>"`. Use os bytes exatos que chegaram, antes de qualquer parse do JSON.
+  </Step>
+  <Step title="Calcule e compare">
+    Calcule o HMAC-SHA256 desse texto com o segredo do endpoint, em hexadecimal, e compare com `v1` em tempo constante.
+  </Step>
+  <Step title="Confira o horário">
+    Recuse eventos com `t` muito antigo (por exemplo, mais de 5 minutos). Isso impede que alguém reenvie um evento capturado.
+  </Step>
+</Steps>
+
+<CodeGroup>
+```js Node.js
+import crypto from "node:crypto";
+
+export function verifyValoraSignature(rawBody, header, secret, toleranceSec = 300) {
+  const parts = Object.fromEntries(String(header).split(",").map((p) => p.split("=")));
+  const t = Number(parts.t);
+  if (!parts.v1 || !Number.isFinite(t)) return false;
+  if (Math.abs(Date.now() / 1000 - t) > toleranceSec) return false;
+
+  const expected = crypto.createHmac("sha256", secret).update(`${t}.${rawBody}`).digest("hex");
+  const a = Buffer.from(parts.v1), b = Buffer.from(expected);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+```
+
+```python Python
+import hmac, hashlib, time
+
+def verify_valora_signature(raw_body: bytes, header: str, secret: str, tolerance: int = 300) -> bool:
+    parts = dict(p.split("=", 1) for p in header.split(",") if "=" in p)
+    try:
+        t = int(parts["t"])
+    except (KeyError, ValueError):
+        return False
+    if abs(time.time() - t) > tolerance:
+        return False
+    expected = hmac.new(secret.encode(), f"{t}.".encode() + raw_body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(parts.get("v1", ""), expected)
+```
+
+```php PHP
+function verifyValoraSignature(string $rawBody, string $header, string $secret, int $tolerance = 300): bool {
+    $parts = [];
+    foreach (explode(",", $header) as $p) {
+        [$k, $v] = array_pad(explode("=", $p, 2), 2, "");
+        $parts[$k] = $v;
+    }
+    if (!isset($parts["t"], $parts["v1"]) || abs(time() - (int) $parts["t"]) > $tolerance) return false;
+    $expected = hash_hmac("sha256", $parts["t"] . "." . $rawBody, $secret);
+    return hash_equals($expected, $parts["v1"]);
+}
+
+// Corpo cru: file_get_contents("php://input")
+```
+</CodeGroup>
+
+<Tip>
+  No Express, use `express.raw({ type: "application/json" })` na rota do webhook. No Next.js (App Router), leia com `await request.text()`. Os dois entregam o corpo cru.
+</Tip>
+
+## Responder
+
+Responda com qualquer status `2xx` em até **10 segundos**. Se o seu processamento demora, grave o evento numa fila, responda `200` e processe depois.
+
+Qualquer outra resposta (status fora de `2xx`, tempo esgotado, erro de conexão) conta como falha.
+
+## Novas tentativas
+
+Quando a entrega falha, a Valora tenta de novo, com intervalos crescentes. São até **8 tentativas** no total:
+
+| Tentativa | Espera depois da falha anterior |
+| - | - |
+| 2ª | 30 segundos |
+| 3ª | 2 minutos |
+| 4ª | 10 minutos |
+| 5ª | 1 hora |
+| 6ª | 6 horas |
+| 7ª e 8ª | 24 horas |
+
+Depois da última, a entrega fica `failed`. Você pode reenviar pelo painel ou com `POST /v1/webhooks/{endpoint_id}/deliveries/{delivery_id}/resend`.
+
+## Eventos repetidos e fora de ordem
+
+<Warning>
+  O mesmo evento pode chegar mais de uma vez (por exemplo, quando a sua resposta se perde na rede). Guarde o `id` do evento (`evt_...`) e ignore os que já processou.
+</Warning>
+
+Os eventos também podem chegar fora de ordem. Antes de agir, compare com o `status` atual do pagamento, que vem no próprio evento, ou consulte `GET /v1/payments/{payment_id}`.
+
+```js
+if (await db.processedEvents.exists(event.id)) return res.sendStatus(200);
+await db.processedEvents.insert(event.id);
+
+const payment = event.data.object;
+if (event.type === "payment.succeeded" && payment.livemode) {
+  await orders.markPaid(payment.external_reference);
+}
+res.sendStatus(200);
+```
+
+## Acompanhar as entregas
+
+- No painel: **Desenvolvedores → Webhooks** mostra cada entrega, o status HTTP que o seu servidor respondeu e o erro.
+- Pela API: `GET /v1/webhooks/{endpoint_id}/deliveries` lista as entregas, com filtro por `status` (`pending`, `processing`, `delivered`, `failed`).
+
+## Boas práticas
+
+- **Verifique sempre a assinatura** e o horário `t`.
+- **Separe teste de produção** pelo campo `livemode`: cada endpoint recebe eventos dos dois ambientes.
+- **Seja idempotente**: processe cada `evt_...` uma vez só.
+- **Responda rápido** e processe em segundo plano.
+- **Rotacione o segredo** se ele vazar.
+
+## Páginas relacionadas
+
+<Columns cols={2}>
+  <Card title="Catálogo de eventos" icon="list" href="/integrar/eventos">
+    Todos os eventos e quando cada um chega.
+  </Card>
+  <Card title="Testes" icon="vial" href="/integrar/testes">
+    Teste o seu endpoint antes de produção.
+  </Card>
+</Columns>

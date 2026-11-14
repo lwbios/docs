@@ -1,37 +1,39 @@
-> **First-time setup**: Customize this file for your project. Prompt the user to customize this file for their project.
-> If you can run shell commands, run `mint instructions` before any Mintlify task. It prints current guidance for this CLI version. Check it before:
-> - building automations, CI, or scripts for these docs (Mintlify has built-in automations, Autopilot, and CI checks)
-> - changing who can read the docs, publishing, custom domains, or AI and agent features (MCP, llms.txt, skill.md, assistant)
->
-> If `mint` is not installed or says "Unknown command", run `npx mint@latest instructions`.
-> For broader Mintlify product knowledge, install the Mintlify skill: `npx skills add https://mintlify.com/docs`
+# Documentação da Valora Payments
 
-# Documentation project instructions
+Site de documentação em [Mintlify](https://mintlify.com). Páginas em MDX com frontmatter YAML; configuração em `docs.json`.
 
-## About this project
+## Fonte da verdade
 
-- This is a documentation site built on [Mintlify](https://mintlify.com)
-- Pages are MDX files with YAML frontmatter
-- Configuration lives in `docs.json`
-- Use the Mintlify MCP server, `https://mcp.mintlify.com`, to edit content and settings via MCP
-- Use the Mintlify docs MCP server, `https://www.mintlify.com/docs/mcp`, to query information about using Mintlify via MCP
+- A documentação descreve a API real em `../Api` (rotas em `Api/src/app/v1`, campos em `Api/src/lib/schemas.ts`). Nunca documente campo, rota, evento ou limite que não exista no código.
+- `openapi.json` é gerado por `node scripts/gen-openapi.mjs openapi.json`. Edite o gerador, não o JSON.
+- Rótulos do painel (menus e botões) vêm do `../dashboard`. Confira o texto exato antes de citar.
 
-## Terminology
+## Idioma e estilo
 
-{/* Add product-specific terms and preferred usage */}
-{/* Example: Use "workspace" not "project", "member" not "user" */}
+- Português do Brasil, segunda pessoa ("você"), voz ativa, frases curtas.
+- Títulos em sentence case ("Criar um checkout", não "Criar Um Checkout").
+- Negrito para elementos da interface: **Desenvolvedores → Chaves de API**.
+- Código para campos, rotas, headers, ids e valores: `external_reference`, `POST /v1/payments`.
+- Páginas abrem com uma frase que diz o que o leitor consegue fazer e terminam com cards de próximos passos.
 
-## Style preferences
+## Termos
 
-{/* Add any project-specific style rules below */}
+- "pagamento" para o objeto `payment`; "compra" ou "checkout" para `checkout_session`.
+- "chave de API" (não "token"); "segredo do webhook" para `whsec_...`.
+- "ambiente de teste" ou "Sandbox" e "produção".
+- Valores: "em reais" na entrada (`"149.90"`) e "em centavos" na saída (`14990`).
 
-- Use active voice and second person ("you")
-- Keep sentences concise — one idea per sentence
-- Use sentence case for headings
-- Bold for UI elements: Click **Settings**
-- Code formatting for file names, commands, paths, and code references
+## Fora do escopo
 
-## Content boundaries
+- Rotas `/internal/*` da API, configuração de servidor, provedores (Efí) e segredos.
+- Saques pela API (não existem).
 
-{/* Define what should and shouldn't be documented */}
-{/* Example: Don't document internal admin features */}
+## Verificar
+
+```bash
+bunx --bun mint@latest validate
+bunx --bun mint@latest broken-links
+bunx --bun mint@latest dev --no-open --port 3333
+```
+
+O CLI do Mintlify não roda no Node 25; use o Bun como acima ou um Node LTS.

@@ -1,0 +1,123 @@
+---
+title: "Catálogo de eventos"
+description: "Todos os eventos de webhook da Valora, quando cada um chega e o que fazer."
+---
+
+Todos os eventos têm o mesmo envelope. O pagamento completo vem em `data.object`.
+
+```json
+{
+  "id": "evt_...",
+  "object": "event",
+  "type": "payment.succeeded",
+  "livemode": true,
+  "created": "2026-11-14T15:02:11.000Z",
+  "data": { "object": { "id": "pay_...", "object": "payment", "status": "succeeded" } }
+}
+```
+
+## Pagamentos
+
+| Evento | Quando chega | Status do pagamento |
+| - | - | - |
+| `payment.succeeded` | o pagamento foi confirmado (Pix, cartão aprovado ou boleto pago) | `succeeded` |
+| `payment.failed` | o cartão foi recusado ou a cobrança não pôde ser criada | `failed` |
+| `payment.expired` | o Pix ou o boleto venceu sem pagamento | `expired` |
+| `payment.canceled` | a cobrança foi cancelada antes do pagamento | `canceled` |
+| `payment.refunded` | parte ou todo o valor foi devolvido ao pagador | `partially_refunded` ou `refunded` |
+| `payment.disputed` | o comprador contestou a compra no cartão | `disputed` |
+| `payment.dispute_won` | a contestação terminou a seu favor | `succeeded` |
+| `payment.dispute_lost` | a contestação terminou a favor do comprador | `refunded` |
+
+Use `"*"` em `events` para receber todos, inclusive os que forem criados no futuro.
+
+## Exemplos
+
+<AccordionGroup>
+  <Accordion title="payment.succeeded (Pix)">
+    ```json
+    {
+      "id": "evt_Mn45Bv67Cx89Za01",
+      "object": "event",
+      "type": "payment.succeeded",
+      "livemode": true,
+      "created": "2026-11-14T15:02:11.000Z",
+      "data": {
+        "object": {
+          "id": "pay_Xk2v9QeR7tLmN3bA",
+          "object": "payment",
+          "livemode": true,
+          "method": "pix",
+          "status": "succeeded",
+          "amount": { "value": 14990, "currency": "BRL" },
+          "customer_id": null,
+          "external_reference": "pedido-1001",
+          "description": "Pedido 1001",
+          "metadata": { "order_id": "1001" },
+          "fee": { "bps": 99, "fixed": 0, "amount": 148 },
+          "refunded_amount": 0,
+          "dispute": null,
+          "items": [],
+          "splits": [],
+          "expires_at": "2026-11-14T15:30:00.000Z",
+          "succeeded_at": "2026-11-14T15:02:10.000Z",
+          "created_at": "2026-11-14T15:00:00.000Z",
+          "pix": {
+            "txid": "...",
+            "e2e_id": "E1234567820261114150210...",
+            "brcode": "00020101021226...",
+            "qr_image": "data:image/png;base64,...",
+            "payer": { "name": "ANA SOUZA", "document_masked": "***.456.789-**" }
+          }
+        }
+      }
+    }
+    ```
+  </Accordion>
+  <Accordion title="payment.failed (cartão recusado)">
+    ```json
+    {
+      "id": "evt_Pl12Ok34Ij56Uh78",
+      "object": "event",
+      "type": "payment.failed",
+      "livemode": true,
+      "created": "2026-11-14T16:10:00.000Z",
+      "data": {
+        "object": {
+          "id": "pay_Cd34Ef56Gh78Ij90",
+          "object": "payment",
+          "method": "card",
+          "status": "failed",
+          "amount": { "value": 29900, "currency": "BRL" },
+          "card": { "brand": "mastercard", "last4": "1234", "installments": 3, "decline_reason": "Transação não autorizada pelo emissor" }
+        }
+      }
+    }
+    ```
+  </Accordion>
+  <Accordion title="payment.refunded (devolução parcial)">
+    ```json
+    {
+      "id": "evt_Qa12Ws34Ed56Rf78",
+      "object": "event",
+      "type": "payment.refunded",
+      "livemode": true,
+      "created": "2026-11-15T10:00:00.000Z",
+      "data": {
+        "object": {
+          "id": "pay_Xk2v9QeR7tLmN3bA",
+          "object": "payment",
+          "method": "pix",
+          "status": "partially_refunded",
+          "amount": { "value": 14990, "currency": "BRL" },
+          "refunded_amount": 2000
+        }
+      }
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+<Note>
+  Os exemplos de falha e devolução mostram só os campos principais. Na entrega real, `data.object` sempre traz o pagamento completo.
+</Note>

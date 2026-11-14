@@ -1,0 +1,173 @@
+---
+title: "Guia de integração"
+description: "Escolha o caminho de integração, crie a cobrança no servidor e confirme o pagamento pelo webhook."
+---
+
+<Columns cols={3}>
+  <Card title="Checkout pela API" icon="window-maximize" href="#checkout-pela-api">
+    Pix, cartão e boleto numa página pronta.
+  </Card>
+  <Card title="Pix direto" icon="qrcode" href="#pix-direto-pela-api">
+    QR Code na sua própria tela.
+  </Card>
+  <Card title="Webhooks" icon="webhook" href="#confirme-pelo-webhook">
+    A confirmação no seu servidor.
+  </Card>
+</Columns>
+
+## Pré-requisitos
+
+- Uma conta no [painel da Valora](https://console.valorapayments.com.br).
+- Uma [chave de API](/conceitos/chaves-de-api) de teste, guardada numa variável de ambiente do servidor:
+
+  ```bash
+  VALORA_API_KEY=sk_vl_...
+  ```
+
+- Para o checkout, pelo menos um [produto](/recursos/produtos) ativo.
+
+## Escolha o caminho
+
+| Caminho | Use quando | Formas de pagamento |
+| - | - | - |
+| **Link fixo** | vender sem código, por link compartilhado | Pix, cartão, boleto |
+| **Checkout pela API** | o seu sistema cria um pedido e manda o cliente pagar | Pix, cartão, boleto |
+| **Pix direto pela API** | você quer o QR Code dentro do seu app ou site | Pix |
+
+<Tip>
+  Na dúvida, comece pelo checkout pela API. Ele oferece as três formas de pagamento e você só precisa tratar o webhook.
+</Tip>
+
+## Checkout pela API
+
+### Crie a compra
+
+<CodeGroup>
+```js Node.js
+const res = await fetch("https://api.valorapayments.com.br/v1/checkouts", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${process.env.VALORA_API_KEY}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    product_cart: [{ product_id: "prod_Ab12Cd34Ef56Gh78", quantity: 1 }],
+    customer: { name: "Ana Souza", email: "ana@example.com" },
+    success_url: "https://sualoja.com/pedido/1001/obrigado",
+    cancel_url: "https://sualoja.com/carrinho",
+    external_reference: "pedido-1001",
+    metadata: { order_id: "1001" },
+  }),
+});
+if (!res.ok) throw new Error(`Valora: ${res.status} ${await res.text()}`);
+const checkout = await res.json();
+```
+
+```python Python
+import os, requests
+
+res = requests.post(
+    "https://api.valorapayments.com.br/v1/checkouts",
+    headers={"Authorization": f"Bearer {os.environ['VALORA_API_KEY']}"},
+    json={
+        "product_cart": [{"product_id": "prod_Ab12Cd34Ef56Gh78", "quantity": 1}],
+        "customer": {"name": "Ana Souza", "email": "ana@example.com"},
+        "success_url": "https://sualoja.com/pedido/1001/obrigado",
+        "cancel_url": "https://sualoja.com/carrinho",
+        "external_reference": "pedido-1001",
+        "metadata": {"order_id": "1001"},
+    },
+)
+res.raise_for_status()
+checkout = res.json()
+```
+
+```php PHP
+$ch = curl_init("https://api.valorapayments.com.br/v1/checkouts");
+curl_setopt_array($ch, [
+    CURLOPT_POST => true,
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_HTTPHEADER => [
+        "Authorization: Bearer " . getenv("VALORA_API_KEY"),
+        "Content-Type: application/json",
+    ],
+    CURLOPT_POSTFIELDS => json_encode([
+        "product_cart" => [["product_id" => "prod_Ab12Cd34Ef56Gh78", "quantity" => 1]],
+        "customer" => ["name" => "Ana Souza", "email" => "ana@example.com"],
+        "success_url" => "https://sualoja.com/pedido/1001/obrigado",
+        "cancel_url" => "https://sualoja.com/carrinho",
+        "external_reference" => "pedido-1001",
+    ]),
+]);
+$checkout = json_decode(curl_exec($ch), true);
+```
+</CodeGroup>
+
+### Redirecione o cliente
+
+```js
+res.redirect(303, checkout.checkout_url);
+```
+
+Guarde o `checkout.id` (`cs_...`) junto do seu pedido. Ele ajuda a conciliar e a consultar o status com `GET /v1/checkouts/{session_id}`.
+
+<Warning>
+  Voltar para a `success_url` **não** confirma o pagamento: o cliente pode abrir essa URL sozinho. Libere o pedido só pelo webhook.
+</Warning>
+
+## Pix direto pela API
+
+```js
+const res = await fetch("https://api.valorapayments.com.br/v1/payments", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${process.env.VALORA_API_KEY}`,
+    "Content-Type": "application/json",
+    "Idempotency-Key": `pedido-${order.id}`,
+  },
+  body: JSON.stringify({
+    method: "pix",
+    amount: order.total, // em reais, ex.: "149.90"
+    external_reference: `pedido-${order.id}`,
+  }),
+});
+const payment = await res.json();
+```
+
+Mostre `payment.pix.qr_image` e `payment.pix.brcode` ao cliente. Veja todos os detalhes em [Pix](/recursos/pix).
+
+## Confirme pelo webhook
+
+Cadastre um endpoint uma vez (no painel em **Desenvolvedores → Webhooks** ou com `POST /v1/webhooks`) e trate os eventos:
+
+| Evento | Quando chega | O que fazer |
+| - | - | - |
+| `payment.succeeded` | pagamento confirmado | liberar o pedido |
+| `payment.failed` | cartão recusado ou cobrança com erro | avisar o cliente e oferecer outra forma |
+| `payment.expired` | Pix ou boleto venceu sem pagamento | cancelar a reserva do pedido |
+| `payment.canceled` | cobrança cancelada | cancelar o pedido |
+| `payment.refunded` | valor devolvido ao pagador | atualizar o pedido |
+| `payment.disputed` | comprador contestou o cartão | separar comprovantes |
+
+Use o `external_reference` (ou o `metadata`) do pagamento para achar o pedido no seu sistema. Veja como validar a assinatura em [Webhooks](/integrar/webhooks).
+
+## Trate os erros
+
+Toda resposta de erro tem o mesmo formato:
+
+```json
+{ "error": { "type": "invalid_request", "message": "Corpo inválido.", "details": { "amount": ["Valor inválido."] } } }
+```
+
+Repita a requisição com a mesma `Idempotency-Key` em erros `5xx` e de rede. Corrija a requisição em erros `4xx`. Veja a lista em [Erros](/api-reference/erros).
+
+## Páginas relacionadas
+
+<Columns cols={2}>
+  <Card title="Webhooks" icon="webhook" href="/integrar/webhooks">
+    Assinatura, novas tentativas e reenvio.
+  </Card>
+  <Card title="Testes" icon="vial" href="/integrar/testes">
+    Valide cada forma de pagamento antes de produção.
+  </Card>
+</Columns>
