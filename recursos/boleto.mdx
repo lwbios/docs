@@ -1,0 +1,49 @@
+---
+title: "Boleto"
+description: "Boleto bancário com Pix embutido, para clientes que preferem pagar pelo código de barras."
+---
+
+O boleto é pago **pelo checkout** da Valora (link fixo ou `POST /v1/checkouts`). Todo boleto sai com um **Pix embutido**: o cliente pode pagar pela linha digitável ou pelo QR Code impresso no mesmo documento.
+
+<Info>
+  A API não cria boletos diretamente. Para vender com boleto, crie uma compra com [`POST /v1/checkouts`](/recursos/checkouts#checkout-pela-api) com `boleto` entre as formas aceitas.
+</Info>
+
+## O que o cliente informa
+
+| Campo | Observação |
+| - | - |
+| Nome e e-mail | obrigatórios |
+| CPF ou CNPJ | com CNPJ, o boleto sai em nome da empresa (razão social) |
+
+## O que o pagamento traz
+
+```json
+"boleto": {
+  "barcode": "00190.00009 01234.567890 ...",
+  "link": "https://...",
+  "pdf": "https://...",
+  "due_date": "2026-11-17",
+  "pix": { "brcode": "00020101021226...", "qr_image": "data:image/png;base64,..." }
+}
+```
+
+| Campo | Uso |
+| - | - |
+| `barcode` | linha digitável |
+| `link` / `pdf` | página e PDF do boleto para o cliente |
+| `due_date` | vencimento (`AAAA-MM-DD`), 3 dias após a emissão |
+| `pix` | Pix embutido, para pagar na hora |
+
+## Ciclo de vida
+
+| Status | Significado | Evento |
+| - | - | - |
+| `requires_payment` | boleto emitido, aguardando pagamento | — |
+| `succeeded` | pago e confirmado | `payment.succeeded` |
+| `expired` | venceu sem pagamento | `payment.expired` |
+| `canceled` | cancelado antes do pagamento | `payment.canceled` |
+
+<Note>
+  Pago pela linha digitável, o boleto é confirmado pela compensação bancária, o que pode levar até 3 dias úteis. Pago pelo Pix embutido, a confirmação é bem mais rápida.
+</Note>

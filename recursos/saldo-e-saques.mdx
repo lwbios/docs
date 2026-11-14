@@ -1,0 +1,74 @@
+---
+title: "Saldo e saques"
+description: "Entenda o saldo disponível e o saldo a liberar, e como sacar para a conta da empresa."
+---
+
+Todo pagamento confirmado vira saldo no seu negócio, já descontada a taxa da Valora. O saldo se divide em duas partes:
+
+| Parte | O que é |
+| - | - |
+| **Disponível** (`available`) | pode ser sacado agora |
+| **A liberar** (`pending`) | já é seu, mas ainda não chegou a data de liberação (vendas no cartão) |
+
+## Quando cada venda fica disponível
+
+| Forma de pagamento | Disponível |
+| - | - |
+| Pix | na hora da confirmação |
+| Boleto | na hora da confirmação |
+| Cartão | em parcelas mensais, a partir de 30 dias após a compra |
+
+## Consultar o saldo
+
+```bash
+curl https://api.valorapayments.com.br/v1/balance \
+  -H "Authorization: Bearer $VALORA_API_KEY"
+```
+
+```json
+{
+  "object": "balance",
+  "currency": "BRL",
+  "available": 125430,
+  "pending": 48000,
+  "updated_at": "2026-11-14T15:02:11.000Z"
+}
+```
+
+Os valores vêm em centavos: `125430` é R$ 1.254,30. Com uma chave de teste, a resposta mostra o saldo de teste.
+
+## Taxas
+
+A taxa de cada pagamento fica registrada no próprio pagamento, no campo `fee`:
+
+```json
+"fee": { "bps": 199, "fixed": 0, "amount": 298 }
+```
+
+| Campo | Significado |
+| - | - |
+| `bps` | parte percentual, em pontos-base (199 = 1,99%) |
+| `fixed` | parte fixa, em centavos |
+| `amount` | taxa total cobrada neste pagamento, em centavos |
+
+As taxas vigentes estão no [site da Valora](https://valorapayments.com.br/pt-BR#fees) e no painel.
+
+## Sacar
+
+Os saques são feitos **pelo painel**, em **Saques**. Não existe endpoint de saque na API: nenhuma chave consegue tirar dinheiro do seu saldo.
+
+<Steps>
+  <Step title="Escolha o destino">
+    Uma chave Pix da empresa.
+  </Step>
+  <Step title="Informe o valor">
+    O painel mostra a taxa de saque e quanto chega no destino.
+  </Step>
+  <Step title="Acompanhe">
+    O saque passa por análise e o status aparece no painel até a conclusão.
+  </Step>
+</Steps>
+
+<Note>
+  Por segurança, o primeiro saque para uma chave Pix nova sempre passa por conferência manual.
+</Note>

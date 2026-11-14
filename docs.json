@@ -1,72 +1,168 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mintlify Starter Kit",
+  "name": "Valora Payments",
+  "description": "Documentação da Valora Payments: Pix, cartão e boleto por uma única API, com checkout pronto e webhooks assinados.",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#0E7AFF",
+    "light": "#52A0FF",
+    "dark": "#0A6FE8"
   },
-  "favicon": "/favicon.svg",
-  "navigation": {
-    "pages": [
-      {
-        "group": "Getting Started",
-        "pages": [
-          "index",
-          "quickstart"
-        ]
-      }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
+  "favicon": "/favicon.ico",
   "logo": {
     "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
+    "dark": "/logo/dark.svg",
+    "href": "https://valorapayments.com.br/pt-BR"
+  },
+  "navigation": {
+    "languages": [
+      {
+        "language": "pt-BR",
+        "tabs": [
+          {
+            "tab": "Documentação",
+            "groups": [
+              {
+                "group": "Começando",
+                "pages": ["index", "quickstart", "conceitos/ambientes", "conceitos/chaves-de-api"]
+              },
+              {
+                "group": "Recursos",
+                "pages": [
+                  "recursos/checkouts",
+                  {
+                    "group": "Formas de pagamento",
+                    "pages": ["recursos/pix", "recursos/cartao", "recursos/boleto"]
+                  },
+                  "recursos/produtos",
+                  "recursos/clientes",
+                  "recursos/saldo-e-saques",
+                  "recursos/devolucoes-e-contestacoes"
+                ]
+              },
+              {
+                "group": "Integrar",
+                "pages": [
+                  "integrar/guia-de-integracao",
+                  {
+                    "group": "Webhooks",
+                    "pages": ["integrar/webhooks", "integrar/eventos"]
+                  },
+                  "integrar/idempotencia",
+                  "integrar/testes",
+                  "integrar/producao"
+                ]
+              },
+              {
+                "group": "Ajuda",
+                "pages": ["ajuda/faq", "ajuda/suporte"]
+              }
+            ]
+          },
+          {
+            "tab": "Referência da API",
+            "groups": [
+              {
+                "group": "Visão geral",
+                "pages": ["api-reference/introducao", "api-reference/erros", "api-reference/paginacao"]
+              },
+              {
+                "group": "Pagamentos",
+                "openapi": "openapi.json",
+                "pages": [
+                  "POST /v1/payments",
+                  "GET /v1/payments",
+                  "GET /v1/payments/{payment_id}",
+                  "POST /v1/payments/{payment_id}/cancel",
+                  "POST /v1/payments/{payment_id}/refund"
+                ]
+              },
+              {
+                "group": "Checkouts",
+                "openapi": "openapi.json",
+                "pages": ["POST /v1/checkouts", "GET /v1/checkouts/{session_id}"]
+              },
+              {
+                "group": "Clientes",
+                "openapi": "openapi.json",
+                "pages": [
+                  "POST /v1/customers",
+                  "GET /v1/customers",
+                  "GET /v1/customers/{customer_id}",
+                  "PATCH /v1/customers/{customer_id}"
+                ]
+              },
+              {
+                "group": "Produtos",
+                "openapi": "openapi.json",
+                "pages": [
+                  "POST /v1/products",
+                  "GET /v1/products",
+                  "GET /v1/products/{product_id}",
+                  "PATCH /v1/products/{product_id}"
+                ]
+              },
+              {
+                "group": "Saldo",
+                "openapi": "openapi.json",
+                "pages": ["GET /v1/balance"]
+              },
+              {
+                "group": "Webhooks",
+                "openapi": "openapi.json",
+                "pages": [
+                  "POST /v1/webhooks",
+                  "GET /v1/webhooks",
+                  "GET /v1/webhooks/{endpoint_id}",
+                  "DELETE /v1/webhooks/{endpoint_id}",
+                  "POST /v1/webhooks/{endpoint_id}/rotate_secret",
+                  "GET /v1/webhooks/{endpoint_id}/deliveries",
+                  "POST /v1/webhooks/{endpoint_id}/deliveries/{delivery_id}/resend"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "api": {
+    "playground": { "display": "interactive" },
+    "examples": { "languages": ["curl", "javascript", "python", "php"] },
+    "params": { "expanded": "all" }
   },
   "navbar": {
     "links": [
-      {
-        "label": "Support",
-        "href": "mailto:support@mintlify.com"
-      }
+      { "label": "Suporte", "href": "mailto:contato@valorapayments.com.br" }
     ],
     "primary": {
       "type": "button",
-      "label": "Dashboard",
-      "href": "https://app.mintlify.com"
+      "label": "Painel",
+      "href": "https://console.valorapayments.com.br"
     }
   },
   "contextual": {
-    "options": [
-      "copy",
-      "view",
-      "chatgpt",
-      "claude",
-      "perplexity",
-      "mcp",
-      "cursor",
-      "vscode"
-    ]
+    "options": ["copy", "view", "chatgpt", "claude", "perplexity", "cursor", "vscode"]
+  },
+  "seo": {
+    "metatags": { "og:locale": "pt_BR" }
   },
   "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    "links": [
+      {
+        "header": "Valora",
+        "items": [
+          { "label": "Site", "href": "https://valorapayments.com.br/pt-BR" },
+          { "label": "Painel", "href": "https://console.valorapayments.com.br" }
+        ]
+      },
+      {
+        "header": "Contato",
+        "items": [
+          { "label": "contato@valorapayments.com.br", "href": "mailto:contato@valorapayments.com.br" },
+          { "label": "Privacidade", "href": "mailto:privacidade@valorapayments.com.br" }
+        ]
+      }
+    ]
   }
 }

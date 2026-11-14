@@ -1,0 +1,61 @@
+---
+title: "Produtos"
+description: "Cadastre o que você vende: nome, preço, imagens e tipo. O preço do produto é a base das cobranças e dos checkouts."
+---
+
+O produto guarda o que o cliente vê no checkout e o preço cobrado. Ao vender pelo produto (`product_id`), o valor é calculado pela Valora, e o cliente nunca consegue alterá-lo.
+
+## Criar um produto
+
+```bash
+curl https://api.valorapayments.com.br/v1/products \
+  -H "Authorization: Bearer $VALORA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Mentoria individual",
+    "description": "Uma hora de mentoria por videochamada.",
+    "type": "service",
+    "price": "149.90",
+    "images": ["https://sualoja.com/img/mentoria.png"],
+    "external_reference": "sku-mentoria-1h"
+  }'
+```
+
+## Campos
+
+| Campo | Tipo | Observação |
+| - | - | - |
+| `name` | texto | obrigatório, até 120 caracteres |
+| `price` | reais | obrigatório, ex.: `"149.90"`. Volta em centavos em `price.amount` |
+| `description` | texto | até 2000 caracteres |
+| `type` | `physical`, `digital`, `service` | padrão: `physical` |
+| `status` | `draft`, `active`, `archived` | padrão: `active` |
+| `images` | lista de URLs HTTPS | até 8 |
+| `external_reference` | texto | seu código (SKU); único por negócio |
+| `statement_description` | texto | texto que o pagador vê no Pix, até 140 caracteres |
+| `metadata` | objeto | até 20 chaves de texto |
+
+## Status
+
+| Status | No checkout |
+| - | - |
+| `active` | pode ser vendido |
+| `draft` | ainda não pode ser vendido |
+| `archived` | fora de venda; o histórico continua |
+
+Criar uma compra com produto que não está `active` responde `409 product_inactive`.
+
+## Mudar o preço
+
+Atualize com `PATCH /v1/products/{product_id}`. A mudança vale para as **próximas** compras. Pagamentos e compras já criados guardam uma cópia do produto e do preço do momento da criação, então não mudam.
+
+```bash
+curl -X PATCH https://api.valorapayments.com.br/v1/products/prod_Ab12Cd34Ef56Gh78 \
+  -H "Authorization: Bearer $VALORA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "price": "169.90" }'
+```
+
+<Tip>
+  No `PATCH`, envie `null` para limpar um campo opcional, como `description` ou `external_reference`.
+</Tip>

@@ -1,0 +1,48 @@
+---
+title: "Teste e produção"
+description: "Como o ambiente de teste (Sandbox) e o de produção se separam, e o que muda entre eles."
+---
+
+A Valora tem dois ambientes. O **Sandbox** serve para integrar e testar sem dinheiro real. A **produção** cobra e paga de verdade. Os dois usam a mesma URL e os mesmos endpoints: quem decide o ambiente é a chave de API.
+
+## A chave define o ambiente
+
+| | Sandbox | Produção |
+| - | - | - |
+| Chave | criada com o ambiente **Sandbox** | criada com o ambiente **Production** |
+| Dinheiro | nenhum dinheiro real se move | cobranças e saques reais |
+| Campo `livemode` | `false` | `true` |
+| Saldo (`GET /v1/balance`) | saldo de teste | saldo real |
+| Webhooks | entregues de verdade, com `livemode: false` | entregues com `livemode: true` |
+
+Não existe parâmetro para trocar de ambiente numa requisição. Para mudar, troque a chave.
+
+<Note>
+  Todo objeto da API traz `livemode`. Confira esse campo no webhook antes de liberar um pedido: um evento de teste nunca deve liberar uma venda real.
+</Note>
+
+## Conta em análise
+
+Logo depois do cadastro, a sua empresa passa por uma análise. Enquanto isso, o Sandbox já funciona normalmente. Os pagamentos reais só ficam disponíveis depois da aprovação.
+
+## Mesma URL, dados separados
+
+- Base da API: `https://api.valorapayments.com.br`
+- Checkout: `https://pay.valorapayments.com.br`
+
+Pagamentos, sessões de checkout e saldo de teste ficam separados dos reais. Produtos, clientes e webhooks cadastrados pertencem ao negócio e são vistos pelas duas chaves.
+
+<Warning>
+  Cada webhook cadastrado recebe os eventos **dos dois ambientes**. Se o mesmo servidor atende teste e produção, separe pelo campo `livemode` do evento. Um evento com `livemode: false` nunca deve liberar uma venda real.
+</Warning>
+
+## Próximos passos
+
+<Columns cols={2}>
+  <Card title="Chaves de API" icon="key" href="/conceitos/chaves-de-api">
+    Como criar, limitar e revogar chaves.
+  </Card>
+  <Card title="Testes" icon="vial" href="/integrar/testes">
+    Roteiro de testes para cada forma de pagamento.
+  </Card>
+</Columns>

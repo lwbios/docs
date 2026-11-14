@@ -1,0 +1,65 @@
+---
+title: "Cartão de crédito"
+description: "Pagamento com cartão em até 12 vezes, direto no checkout, sem o número do cartão passar pelo seu servidor."
+---
+
+O cartão de crédito é pago **pelo checkout** da Valora (link fixo ou `POST /v1/checkouts`). O número do cartão é transformado em token no navegador do cliente e nunca passa pelo seu servidor nem fica guardado na Valora. Você não precisa de certificação PCI.
+
+<Info>
+  A API não cria cobranças de cartão diretamente. Para vender com cartão, crie uma compra com [`POST /v1/checkouts`](/recursos/checkouts#checkout-pela-api) com `card` entre as formas aceitas.
+</Info>
+
+## O que o cliente informa
+
+| Campo | Observação |
+| - | - |
+| Dados do cartão | número, nome impresso, validade e CVV |
+| CPF do titular | obrigatório no cartão (CNPJ não é aceito) |
+| Data de nascimento e endereço | usados na análise antifraude |
+| Celular | obrigatório no cartão |
+| Parcelas | 1, 2, 3, 6 ou 12 vezes |
+
+## Ciclo de vida
+
+| Status | Significado | Evento |
+| - | - | - |
+| `processing` | o cartão está em análise antifraude | — |
+| `succeeded` | aprovado | `payment.succeeded` |
+| `failed` | recusado pelo emissor ou pela análise | `payment.failed` |
+| `disputed` | o comprador contestou a compra no banco (chargeback) | `payment.disputed` |
+
+Quando o pagamento é recusado, `card.decline_reason` traz o motivo informado pelo emissor (sem dados do cartão). O cliente pode tentar de novo na mesma compra.
+
+<Note>
+  Para proteger a sua loja contra testes de cartões roubados, o checkout tem verificação anti-robô e limita as tentativas. Depois de **3 recusas** na mesma compra, o cartão é bloqueado naquela compra e o cliente pode concluir por Pix ou boleto.
+</Note>
+
+## Dados do cartão no pagamento
+
+O objeto do pagamento traz só o necessário para atendimento e conciliação:
+
+```json
+"card": {
+  "brand": "visa",
+  "last4": "3335",
+  "installments": 3,
+  "decline_reason": null
+}
+```
+
+## Quando o dinheiro fica disponível
+
+Vendas no cartão entram no saldo **a liberar** e passam para o **disponível** em parcelas mensais, a partir de 30 dias após a compra:
+
+| Parcelas da venda | Liberação |
+| - | - |
+| 1x | tudo em 30 dias |
+| 2x | metade em 30 e metade em 60 dias |
+| 3x | um terço em 30, 60 e 90 dias |
+| 6x e 12x | uma parte a cada 30 dias |
+
+Veja [Saldo e saques](/recursos/saldo-e-saques).
+
+## Contestações
+
+Se o comprador contestar a compra no banco, o pagamento muda para `disputed` e o valor sai do seu saldo até a disputa terminar. Veja [Devoluções e contestações](/recursos/devolucoes-e-contestacoes).

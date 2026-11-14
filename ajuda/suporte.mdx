@@ -1,0 +1,25 @@
+---
+title: "Suporte"
+description: "Como falar com a Valora e o que enviar para resolvermos mais rápido."
+---
+
+<Columns cols={2}>
+  <Card title="Atendimento" icon="envelope" href="mailto:contato@valorapayments.com.br">
+    contato@valorapayments.com.br
+  </Card>
+  <Card title="Privacidade e dados" icon="shield" href="mailto:privacidade@valorapayments.com.br">
+    privacidade@valorapayments.com.br
+  </Card>
+</Columns>
+
+## O que enviar
+
+Para encontrarmos o seu caso mais rápido, inclua:
+
+- O id do objeto: pagamento (`pay_...`), compra (`cs_...`), entrega de webhook (`whd_...`) ou evento (`evt_...`).
+- O ambiente: teste (`livemode: false`) ou produção (`livemode: true`).
+- O horário aproximado e o `type` e a `message` do erro recebido.
+
+<Warning>
+  Nunca envie a sua chave de API, o segredo do webhook ou dados completos de cartão. A Valora nunca vai pedir esses dados.
+</Warning>

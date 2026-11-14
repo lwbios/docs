@@ -1,0 +1,134 @@
+---
+title: "Referência da API"
+sidebarTitle: "Introdução"
+description: "URL, autenticação, formato das respostas, limites e convenções da API REST da Valora."
+---
+
+A API da Valora é REST, recebe e devolve JSON e usa os status HTTP padrão. Todas as rotas ficam em `/v1`.
+
+<Columns cols={2}>
+  <Card title="Início rápido" icon="rocket" href="/quickstart">
+    A primeira cobrança em poucos minutos.
+  </Card>
+  <Card title="Webhooks" icon="webhook" href="/integrar/webhooks">
+    Confirmação dos pagamentos no seu servidor.
+  </Card>
+</Columns>
+
+## URL base
+
+```text
+https://api.valorapayments.com.br
+```
+
+A mesma URL atende teste e produção. O ambiente vem da chave usada. Veja [Teste e produção](/conceitos/ambientes).
+
+## Autenticação
+
+Envie a chave no header `Authorization`, no formato Bearer:
+
+```bash
+curl https://api.valorapayments.com.br/v1/payments \
+  -H "Authorization: Bearer sk_vl_..."
+```
+
+| Situação | Resposta |
+| - | - |
+| Sem header ou com formato inválido | `401 invalid_api_key` |
+| Chave revogada ou inexistente | `401 invalid_api_key` |
+| Chave sem o escopo da rota | `403 missing_scope` |
+| Chave de produção com a empresa ainda em análise | `403 business_not_active` |
+
+<Warning>
+  Use a chave só no servidor. Veja [Chaves de API](/conceitos/chaves-de-api) para escopos e revogação.
+</Warning>
+
+## Convenções
+
+### Dinheiro
+
+| Onde | Formato | Exemplo |
+| - | - | - |
+| Entrada (corpo da requisição) | reais, texto ou número, até 2 casas, ponto decimal | `"149.90"` |
+| Saída (respostas e webhooks) | centavos, inteiro | `14990` |
+
+A moeda é sempre `BRL`. O valor mínimo é `0.01`.
+
+### Ids
+
+Todo objeto tem um id com prefixo:
+
+| Prefixo | Objeto |
+| - | - |
+| `pay_` | pagamento |
+| `cs_` | compra (sessão de checkout) |
+| `cus_` | cliente |
+| `prod_` | produto |
+| `ref_` | devolução |
+| `we_` | endpoint de webhook |
+| `whd_` | entrega de webhook |
+| `evt_` | evento |
+
+### Datas
+
+Datas vêm em ISO 8601, em UTC: `2026-11-14T15:02:11.000Z`.
+
+### Campos opcionais
+
+Campos sem valor vêm como `null`, nunca omitidos. Nas rotas `PATCH`, enviar `null` limpa o campo.
+
+### `external_reference` e `metadata`
+
+- `external_reference`: o seu identificador (id do pedido, SKU), até 100 caracteres. Use para conciliar e para buscar.
+- `metadata`: até 20 pares de chave e valor em texto (chave até 40, valor até 500 caracteres). Volta igual em todas as respostas e webhooks.
+
+<Note>
+  Não coloque dados sensíveis (senhas, números de cartão, documentos completos) em `metadata`.
+</Note>
+
+## Respostas
+
+Sucesso: o objeto, ou uma lista.
+
+```json
+{ "id": "pay_Xk2v9QeR7tLmN3bA", "object": "payment", "status": "succeeded" }
+```
+
+Erro: sempre no mesmo formato. Veja [Erros](/api-reference/erros).
+
+```json
+{ "error": { "type": "not_found", "message": "Pagamento não encontrado." } }
+```
+
+## Limites
+
+| Limite | Valor |
+| - | - |
+| Requisições por chave | 300 por minuto |
+| Requisições sem chave válida | 60 por minuto por IP |
+| Tamanho do corpo | 256 KB |
+
+Passou do limite? A resposta é `429 rate_limited` com o header `Retry-After` (em segundos).
+
+## Recursos
+
+<Columns cols={2}>
+  <Card title="Pagamentos" icon="money-bill" href="/recursos/pix">
+    Cobranças Pix, cancelamento e devolução.
+  </Card>
+  <Card title="Checkouts" icon="window-maximize" href="/recursos/checkouts">
+    Compras com página de pagamento pronta.
+  </Card>
+  <Card title="Clientes" icon="user" href="/recursos/clientes">
+    Dados de quem compra.
+  </Card>
+  <Card title="Produtos" icon="box" href="/recursos/produtos">
+    Catálogo e preços.
+  </Card>
+  <Card title="Saldo" icon="wallet" href="/recursos/saldo-e-saques">
+    Disponível e a liberar.
+  </Card>
+  <Card title="Webhooks" icon="webhook" href="/integrar/webhooks">
+    Endpoints, entregas e segredos.
+  </Card>
+</Columns>
