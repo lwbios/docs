@@ -1,0 +1,59 @@
+---
+title: "Frameworks"
+sidebarTitle: "Visão geral"
+description: "Tutoriais passo a passo para integrar a Valora no seu framework: checkout, Pix e webhook com assinatura verificada."
+---
+
+Cada tutorial monta a mesma integração completa no seu framework:
+
+1. Um cliente pequeno para chamar a API da Valora.
+2. Uma rota que cria a compra e manda o cliente para o checkout.
+3. Uma rota que recebe o webhook, verifica a assinatura e libera o pedido uma vez só.
+
+<Columns cols={2}>
+  <Card title="Next.js" icon="react" href="/frameworks/nextjs">
+    App Router, Route Handlers e Server Actions.
+  </Card>
+  <Card title="Node.js com Express" icon="node-js" href="/frameworks/express">
+    API em Express com corpo cru no webhook.
+  </Card>
+  <Card title="Laravel" icon="laravel" href="/frameworks/laravel">
+    Controllers, rotas de API e Http Client.
+  </Card>
+  <Card title="Python com FastAPI" icon="python" href="/frameworks/fastapi">
+    Endpoints assíncronos com httpx.
+  </Card>
+</Columns>
+
+## Antes de começar
+
+Todos os tutoriais usam as mesmas três variáveis de ambiente:
+
+```bash .env
+VALORA_API_KEY=sk_vl_...          # Desenvolvedores → Chaves de API
+VALORA_WEBHOOK_SECRET=whsec_...   # aparece ao criar o webhook
+VALORA_PRODUCT_ID=prod_...        # produto ativo que você vai vender
+```
+
+<Steps>
+  <Step title="Crie a chave de API">
+    No painel, em **Desenvolvedores → Chaves de API**, crie uma chave com as permissões `checkouts:write` e `payments:read`.
+  </Step>
+  <Step title="Crie um produto">
+    No painel, em **Produtos**, ou com [`POST /v1/products`](/api-reference/produtos/criar-um-produto). Copie o id (`prod_...`).
+  </Step>
+  <Step title="Exponha o servidor local">
+    O webhook precisa de uma URL pública com HTTPS. Em desenvolvimento, use um túnel:
+
+    ```bash
+    ngrok http 3000
+    ```
+  </Step>
+  <Step title="Cadastre o webhook">
+    Em **Desenvolvedores → Webhooks → Adicionar destino**, informe `https://SEU-TUNEL/api/webhooks/valora` (o caminho do tutorial) e guarde o segredo `whsec_...`.
+  </Step>
+</Steps>
+
+<Tip>
+  Usa um agente de IA para programar? Veja [IA e agentes](/ia/visao-geral) para dar a ele a documentação e as regras da Valora.
+</Tip>

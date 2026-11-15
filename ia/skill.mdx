@@ -1,0 +1,38 @@
+---
+title: "Skill para agentes"
+description: "Instale a skill da Valora no seu agente de código para ele saber integrar e revisar pagamentos sem você repetir as regras."
+---
+
+A skill é um pacote de instruções que o agente carrega sozinho quando a tarefa envolve a Valora. Ela traz as regras de segurança, o formato do dinheiro, a escolha entre checkout e Pix e a verificação do webhook, além dos links para as páginas certas.
+
+## Instalar
+
+```bash
+npx skills add https://docs.valorapayments.com.br
+```
+
+O comando detecta os agentes instalados (Claude Code, Cursor, Codex e outros) e instala a skill em cada um.
+
+## Quando o agente usa
+
+A skill entra automaticamente quando você pede algo como:
+
+- "Integre a Valora neste projeto."
+- "Crie o endpoint de webhook da Valora."
+- "Adicione Pix com a Valora na tela de pagamento."
+- "Revise o código de pagamentos."
+
+## O que ela ensina
+
+| Tema | Regra principal |
+| - | - |
+| Segurança | chave e segredo só no servidor, em variáveis de ambiente |
+| Dinheiro | reais como texto na entrada, centavos inteiros na saída |
+| Fluxo | checkout para Pix, cartão e boleto; `POST /v1/payments` só para Pix |
+| Confirmação | pedido pago só com `payment.succeeded` e assinatura válida |
+| Webhook | corpo cru, HMAC-SHA256, tempo constante, eventos repetidos ignorados |
+| Revisão | checklist de seis pontos antes de produção |
+
+<Note>
+  A skill complementa o [servidor MCP](/ia/mcp): a skill diz **como** integrar, e o MCP traz os **detalhes** de cada página quando o agente precisa.
+</Note>

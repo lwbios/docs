@@ -1,0 +1,63 @@
+---
+title: "Servidor MCP"
+description: "Conecte a documentação da Valora ao seu agente pelo Model Context Protocol, para ele pesquisar e ler as páginas sozinho."
+---
+
+O servidor MCP deixa o seu agente pesquisar esta documentação durante o trabalho. Em vez de responder de memória, ele busca a página certa (por exemplo, como verificar a assinatura do webhook) e usa o conteúdo atual.
+
+```text
+https://docs.valorapayments.com.br/mcp
+```
+
+O servidor só lê a documentação pública. Ele não acessa a sua conta, não cria cobranças e não precisa de chave.
+
+## Conectar
+
+<Tabs>
+  <Tab title="Claude Code">
+    ```bash
+    claude mcp add --transport http valora-docs https://docs.valorapayments.com.br/mcp
+    ```
+
+    Confira com `claude mcp list`.
+  </Tab>
+  <Tab title="Cursor">
+    Crie ou edite `.cursor/mcp.json` no projeto (ou `~/.cursor/mcp.json` para todos os projetos):
+
+    ```json .cursor/mcp.json
+    {
+      "mcpServers": {
+        "valora-docs": { "url": "https://docs.valorapayments.com.br/mcp" }
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="VS Code">
+    ```json .vscode/mcp.json
+    {
+      "servers": {
+        "valora-docs": { "type": "http", "url": "https://docs.valorapayments.com.br/mcp" }
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="Claude (app)">
+    Em **Configurações → Conectores → Adicionar conector personalizado**, use o nome `Valora Docs` e a URL `https://docs.valorapayments.com.br/mcp`.
+  </Tab>
+  <Tab title="Outros">
+    Qualquer cliente MCP que aceite transporte HTTP funciona com a URL acima. A descoberta automática fica em `https://docs.valorapayments.com.br/.well-known/mcp`.
+  </Tab>
+</Tabs>
+
+## Como usar
+
+Peça ao agente para consultar a documentação antes de escrever código:
+
+```text
+Use o MCP valora-docs para ler as páginas de checkout e de webhooks da Valora.
+Depois, crie a rota de checkout e o endpoint de webhook neste projeto.
+```
+
+<Tip>
+  Junte o MCP com as [regras para o projeto](/ia/regras). O MCP traz os detalhes; as regras garantem que o agente nunca esqueça o essencial.
+</Tip>

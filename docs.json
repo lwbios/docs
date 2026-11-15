@@ -54,6 +54,14 @@
                 ]
               },
               {
+                "group": "Frameworks",
+                "pages": ["frameworks/visao-geral", "frameworks/nextjs", "frameworks/express", "frameworks/laravel", "frameworks/fastapi"]
+              },
+              {
+                "group": "IA e agentes",
+                "pages": ["ia/visao-geral", "ia/mcp", "ia/prompts", "ia/regras", "ia/skill"]
+              },
+              {
                 "group": "Ajuda",
                 "pages": ["ajuda/faq", "ajuda/suporte"]
               }
@@ -142,7 +150,10 @@
     }
   },
   "contextual": {
-    "options": ["copy", "view", "chatgpt", "claude", "perplexity", "cursor", "vscode"]
+    "options": ["copy", "view", "chatgpt", "claude", "perplexity", "mcp", "cursor", "vscode"]
+  },
+  "markdown": {
+    "instructions": "Valora Payments API (Brazil: Pix, card, boleto). Base URL https://api.valorapayments.com.br, Authorization: Bearer sk_vl_... used only on the server. Request amounts are reais as strings (\"149.90\"); response amounts are integer cents (14990). Use POST /v1/checkouts for card and boleto; POST /v1/payments only creates Pix and should send an Idempotency-Key. Confirm payments only through the payment.succeeded webhook after verifying X-Valora-Signature (hex HMAC-SHA256 of \"<t>.<raw body>\"), dedupe by event.id and check livemode. Never invent endpoints or fields: check /llms.txt and /openapi.json."
   },
   "seo": {
     "metatags": { "og:locale": "pt_BR" }

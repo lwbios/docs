@@ -1,0 +1,155 @@
+---
+title: "Python com FastAPI"
+description: "Integre a Valora numa API FastAPI com httpx: crie compras e Pix e confirme os pagamentos pelo webhook."
+---
+
+Neste tutorial, você monta numa API FastAPI:
+
+- `POST /checkout`: cria a compra e devolve o link do checkout;
+- `POST /pix`: cria uma cobrança Pix;
+- `POST /api/webhooks/valora`: recebe e verifica os eventos.
+
+## Pré-requisitos
+
+- Python 3.10+.
+- As variáveis de [Antes de começar](/frameworks/visao-geral#antes-de-começar).
+
+```bash
+pip install fastapi uvicorn httpx python-dotenv
+```
+
+## Integração
+
+<Steps>
+  <Step title="Crie o cliente da Valora">
+    ```python valora.py
+    import os
+    import httpx
+
+    BASE_URL = "https://api.valorapayments.com.br"
+
+
+    class ValoraError(Exception):
+        def __init__(self, status: int, type_: str | None, message: str):
+            super().__init__(message)
+            self.status, self.type = status, type_
+
+
+    async def valora(method: str, path: str, json: dict | None = None, idempotency_key: str | None = None) -> dict:
+        headers = {"Authorization": f"Bearer {os.environ['VALORA_API_KEY']}"}
+        if idempotency_key:
+            headers["Idempotency-Key"] = idempotency_key
+        async with httpx.AsyncClient(base_url=BASE_URL, timeout=20) as client:
+            res = await client.request(method, path, json=json, headers=headers)
+        data = res.json()
+        if res.is_error:
+            err = data.get("error", {})
+            raise ValoraError(res.status_code, err.get("type"), err.get("message", f"HTTP {res.status_code}"))
+        return data
+    ```
+  </Step>
+  <Step title="Crie as rotas">
+    ```python main.py
+    import hashlib
+    import hmac
+    import json
+    import os
+    import time
+    import uuid
+
+    from dotenv import load_dotenv
+    from fastapi import FastAPI, Header, HTTPException, Request
+    from pydantic import BaseModel
+
+    from valora import ValoraError, valora
+
+    load_dotenv()
+    app = FastAPI()
+
+
+    class CheckoutIn(BaseModel):
+        email: str | None = None
+
+
+    @app.post("/checkout")
+    async def checkout(body: CheckoutIn):
+        order_id = str(uuid.uuid4())
+        try:
+            session = await valora("POST", "/v1/checkouts", json={
+                "product_cart": [{"product_id": os.environ["VALORA_PRODUCT_ID"], "quantity": 1}],
+                **({"customer": {"email": body.email}} if body.email else {}),
+                "success_url": f"{os.environ['APP_URL']}/pedido/{order_id}",
+                "cancel_url": f"{os.environ['APP_URL']}/",
+                "external_reference": order_id,
+            })
+        except ValoraError as e:
+            raise HTTPException(status_code=502 if e.status >= 500 else e.status, detail=e.type)
+        return {"url": session["checkout_url"]}
+
+
+    class PixIn(BaseModel):
+        order_id: str
+
+
+    @app.post("/pix")
+    async def pix(body: PixIn):
+        amount = "149.90"  # calcule no servidor a partir do pedido
+        payment = await valora("POST", "/v1/payments", json={
+            "method": "pix",
+            "amount": amount,
+            "external_reference": f"pedido-{body.order_id}",
+        }, idempotency_key=f"pedido-{body.order_id}")
+        return {"id": payment["id"], "qr_image": payment["pix"]["qr_image"], "brcode": payment["pix"]["brcode"]}
+
+
+    def signature_ok(raw: bytes, header: str | None, secret: str, tolerance: int = 300) -> bool:
+        parts = dict(p.split("=", 1) for p in (header or "").split(",") if "=" in p)
+        try:
+            t = int(parts["t"])
+        except (KeyError, ValueError):
+            return False
+        if abs(time.time() - t) > tolerance:
+            return False
+        expected = hmac.new(secret.encode(), f"{t}.".encode() + raw, hashlib.sha256).hexdigest()
+        return hmac.compare_digest(parts.get("v1", ""), expected)
+
+
+    @app.post("/api/webhooks/valora")
+    async def webhook(request: Request, x_valora_signature: str | None = Header(default=None)):
+        raw = await request.body()  # corpo cru, antes de qualquer parse
+        if not signature_ok(raw, x_valora_signature, os.environ["VALORA_WEBHOOK_SECRET"]):
+            raise HTTPException(status_code=400, detail="assinatura inválida")
+
+        event = json.loads(raw)
+        # Ignore eventos repetidos pelo event["id"] antes de agir.
+        if event["type"] == "payment.succeeded":
+            payment = event["data"]["object"]
+            # await orders.mark_paid(payment["external_reference"], payment["id"])
+        return {"ok": True}
+    ```
+  </Step>
+</Steps>
+
+## Teste
+
+```bash
+uvicorn main:app --reload --port 8000
+ngrok http 8000
+```
+
+Cadastre `https://SEU-TUNEL/api/webhooks/valora` em **Desenvolvedores → Webhooks**, faça uma compra de teste e confira a entrega com status `200`.
+
+<Tip>
+  Usa Django? A lógica é a mesma: leia o corpo cru com `request.body`, marque a view com `@csrf_exempt` e use a função `signature_ok` acima.
+</Tip>
+
+## Próximos passos
+
+<Columns cols={2}>
+  <Card title="Webhooks" icon="webhook" href="/integrar/webhooks">
+    Novas tentativas, reenvio e boas práticas.
+  </Card>
+  <Card title="Checklist de produção" icon="list-check" href="/integrar/producao">
+    O que conferir antes de vender de verdade.
+  </Card>
+</Columns>

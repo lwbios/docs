@@ -1,0 +1,57 @@
+---
+title: "Integre com IA"
+sidebarTitle: "Visão geral"
+description: "Dê ao seu agente de código (Claude Code, Cursor, Copilot, Codex) a documentação e as regras da Valora para integrar mais rápido e sem erros."
+---
+
+Agentes de IA escrevem integrações de pagamento rápido, mas erram nos detalhes: valor em reais ou em centavos, onde fica a chave, como verificar a assinatura do webhook. Esta seção dá ao seu agente o contexto certo, em quatro formatos.
+
+<Columns cols={2}>
+  <Card title="Servidor MCP" icon="plug" href="/ia/mcp">
+    O agente pesquisa a documentação da Valora sozinho, sempre na versão mais nova.
+  </Card>
+  <Card title="Prompts prontos" icon="wand-magic-sparkles" href="/ia/prompts">
+    Copie e cole para integrar checkout, Pix ou webhook.
+  </Card>
+  <Card title="Regras para o projeto" icon="file-lines" href="/ia/regras">
+    Um `AGENTS.md` com as regras da Valora para o agente seguir sempre.
+  </Card>
+  <Card title="Skill para agentes" icon="toolbox" href="/ia/skill">
+    Instale a skill da Valora no Claude Code, no Cursor e em outros agentes.
+  </Card>
+</Columns>
+
+## Documentação em formato para IA
+
+Toda página desta documentação também existe em Markdown limpo, sem menu nem layout:
+
+| Recurso | Endereço | Uso |
+| - | - | - |
+| Página em Markdown | adicione `.md` ao fim da URL, ex.: `/integrar/webhooks.md` | colar uma página no chat |
+| Índice | `/llms.txt` | lista de todas as páginas com descrição |
+| Documentação inteira | `/llms-full.txt` | todo o conteúdo num arquivo só |
+| Especificação da API | [`/openapi.json`](/openapi.json) | gerar cliente tipado ou dar ao agente os campos exatos |
+| MCP | `/mcp` | pesquisa ao vivo pelo agente |
+
+No topo de cada página, o menu **Copiar página** copia o Markdown ou abre a página direto no ChatGPT, no Claude, no Perplexity, no Cursor ou no VS Code.
+
+## Caminho recomendado
+
+<Steps>
+  <Step title="Conecte o MCP">
+    Assim o agente consulta a documentação em vez de adivinhar. Veja [Servidor MCP](/ia/mcp).
+  </Step>
+  <Step title="Adicione as regras ao projeto">
+    Cole o bloco de [Regras para o projeto](/ia/regras) no `AGENTS.md` (ou `CLAUDE.md`, `.cursor/rules`).
+  </Step>
+  <Step title="Use um prompt pronto">
+    Escolha a tarefa em [Prompts prontos](/ia/prompts) e cole no agente.
+  </Step>
+  <Step title="Revise o que é crítico">
+    Antes de ir para produção, revise você mesmo três pontos: a chave fica só no servidor, a assinatura do webhook é verificada com o corpo cru e o pedido só é liberado por `payment.succeeded`.
+  </Step>
+</Steps>
+
+<Warning>
+  Nunca cole a sua chave de API ou o segredo do webhook no chat de um agente. Deixe os valores em variáveis de ambiente e diga ao agente só o **nome** da variável.
+</Warning>

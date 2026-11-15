@@ -1,0 +1,179 @@
+---
+title: "Next.js"
+description: "Integre a Valora num app Next.js (App Router): crie a compra no servidor, redirecione para o checkout e confirme pelo webhook."
+---
+
+Neste tutorial, você monta num projeto Next.js 14 ou mais novo (App Router):
+
+- um botão de compra que cria a compra no servidor e leva o cliente ao checkout da Valora;
+- uma Route Handler que recebe o webhook, verifica a assinatura e marca o pedido como pago.
+
+## Pré-requisitos
+
+- Next.js 14+ com App Router e TypeScript.
+- As variáveis `VALORA_API_KEY`, `VALORA_WEBHOOK_SECRET` e `VALORA_PRODUCT_ID` em `.env.local`. Veja [Antes de começar](/frameworks/visao-geral#antes-de-começar).
+
+<Warning>
+  Nenhuma dessas variáveis pode começar com `NEXT_PUBLIC_`. Elas só existem no servidor.
+</Warning>
+
+## Integração
+
+<Steps>
+  <Step title="Crie o cliente da Valora">
+    Um helper só de servidor para chamar a API e devolver erros legíveis.
+
+    ```ts lib/valora.ts
+    import "server-only";
+
+    const BASE_URL = "https://api.valorapayments.com.br";
+
+    export class ValoraError extends Error {
+      constructor(public status: number, public type: string, message: string) {
+        super(message);
+      }
+    }
+
+    export async function valora<T>(path: string, init: RequestInit = {}): Promise<T> {
+      const res = await fetch(`${BASE_URL}${path}`, {
+        ...init,
+        headers: {
+          Authorization: `Bearer ${process.env.VALORA_API_KEY}`,
+          "Content-Type": "application/json",
+          ...init.headers,
+        },
+        cache: "no-store",
+      });
+      const body = await res.json();
+      if (!res.ok) throw new ValoraError(res.status, body.error?.type, body.error?.message);
+      return body as T;
+    }
+
+    export type CheckoutSession = {
+      id: string;
+      status: "open" | "processing" | "paid" | "failed" | "expired";
+      checkout_url: string;
+    };
+    ```
+
+    Se o pacote `server-only` não estiver instalado, rode `npm install server-only`.
+  </Step>
+  <Step title="Crie a compra com uma Server Action">
+    A ação cria a compra e redireciona o cliente para o `checkout_url`.
+
+    ```ts app/actions/checkout.ts
+    "use server";
+
+    import { redirect } from "next/navigation";
+    import { valora, type CheckoutSession } from "@/lib/valora";
+
+    export async function startCheckout(formData: FormData) {
+      const orderId = crypto.randomUUID();
+      // Grave o pedido como "pendente" no seu banco aqui, com o orderId.
+
+      const session = await valora<CheckoutSession>("/v1/checkouts", {
+        method: "POST",
+        body: JSON.stringify({
+          product_cart: [{ product_id: process.env.VALORA_PRODUCT_ID, quantity: 1 }],
+          customer: { email: String(formData.get("email") ?? "") || undefined },
+          success_url: `${process.env.APP_URL}/pedido/${orderId}`,
+          cancel_url: `${process.env.APP_URL}/`,
+          external_reference: orderId,
+        }),
+      });
+
+      redirect(session.checkout_url);
+    }
+    ```
+
+    ```tsx app/page.tsx
+    import { startCheckout } from "./actions/checkout";
+
+    export default function Page() {
+      return (
+        <form action={startCheckout}>
+          <input name="email" type="email" placeholder="Seu e-mail" />
+          <button type="submit">Comprar</button>
+        </form>
+      );
+    }
+    ```
+
+    `APP_URL` é a URL pública do seu app (por exemplo, `https://sualoja.com`).
+  </Step>
+  <Step title="Receba o webhook">
+    Leia o corpo com `request.text()`: a assinatura é calculada sobre o corpo cru.
+
+    ```ts app/api/webhooks/valora/route.ts
+    import crypto from "node:crypto";
+
+    export const runtime = "nodejs";
+
+    function isValid(raw: string, header: string | null, secret: string) {
+      const parts = Object.fromEntries((header ?? "").split(",").map((p) => p.split("=")));
+      const t = Number(parts.t);
+      if (!parts.v1 || !Number.isFinite(t) || Math.abs(Date.now() / 1000 - t) > 300) return false;
+      const expected = crypto.createHmac("sha256", secret).update(`${t}.${raw}`).digest("hex");
+      const a = Buffer.from(parts.v1);
+      const b = Buffer.from(expected);
+      return a.length === b.length && crypto.timingSafeEqual(a, b);
+    }
+
+    export async function POST(request: Request) {
+      const raw = await request.text();
+      if (!isValid(raw, request.headers.get("x-valora-signature"), process.env.VALORA_WEBHOOK_SECRET!)) {
+        return new Response("assinatura inválida", { status: 400 });
+      }
+
+      const event = JSON.parse(raw);
+      const payment = event.data.object;
+
+      // 1) Ignore eventos já processados (o mesmo evento pode chegar mais de uma vez).
+      // if (await db.webhookEvents.exists(event.id)) return new Response(null, { status: 200 });
+      // await db.webhookEvents.insert(event.id);
+
+      if (event.type === "payment.succeeded") {
+        // 2) Em produção, só libere pedidos reais.
+        // if (!payment.livemode && process.env.NODE_ENV === "production") return new Response(null, { status: 200 });
+        // 3) Marque o pedido como pago.
+        // await db.orders.markPaid(payment.external_reference, payment.id);
+      }
+
+      return new Response(null, { status: 200 });
+    }
+    ```
+  </Step>
+  <Step title="Mostre o resultado ao cliente">
+    A página de retorno lê o **seu** banco, que é atualizado pelo webhook. O retorno à `success_url`, sozinho, não prova o pagamento.
+
+    ```tsx app/pedido/[id]/page.tsx
+    export default async function Pedido({ params }: { params: Promise<{ id: string }> }) {
+      const { id } = await params;
+      // const order = await db.orders.find(id);
+      const paid = false; // order?.status === "paid"
+      return <p>{paid ? "Pagamento confirmado!" : "Estamos aguardando a confirmação do pagamento."}</p>;
+    }
+    ```
+  </Step>
+</Steps>
+
+## Teste
+
+1. Rode `npm run dev` e abra o túnel (`ngrok http 3000`).
+2. Clique em **Comprar** e pague no checkout de teste.
+3. Em **Desenvolvedores → Webhooks**, confira a entrega com status `200`.
+
+<Tip>
+  Um middleware de autenticação não pode bloquear `/api/webhooks/valora`. A Valora chama essa rota sem sessão de usuário.
+</Tip>
+
+## Próximos passos
+
+<Columns cols={2}>
+  <Card title="Webhooks" icon="webhook" href="/integrar/webhooks">
+    Novas tentativas, reenvio e boas práticas.
+  </Card>
+  <Card title="Checklist de produção" icon="list-check" href="/integrar/producao">
+    O que conferir antes de vender de verdade.
+  </Card>
+</Columns>

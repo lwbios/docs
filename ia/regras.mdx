@@ -1,0 +1,51 @@
+---
+title: "Regras para o projeto"
+description: "Um bloco de regras da Valora para o AGENTS.md, CLAUDE.md ou .cursor/rules do seu projeto."
+---
+
+Agentes de código leem arquivos de instrução do projeto antes de cada tarefa. Cole o bloco abaixo no arquivo que o seu agente usa e ele seguirá as regras da Valora sempre que mexer em pagamentos.
+
+| Agente | Arquivo |
+| - | - |
+| Claude Code | `CLAUDE.md` ou `AGENTS.md` na raiz |
+| Cursor | `.cursor/rules/valora.mdc` |
+| GitHub Copilot | `.github/copilot-instructions.md` |
+| Codex e outros | `AGENTS.md` na raiz |
+
+## O bloco
+
+````markdown AGENTS.md
+## Pagamentos: Valora Payments
+
+Documentação: https://docs.valorapayments.com.br (Markdown: acrescente .md à URL; índice: /llms.txt).
+Consulte a documentação antes de mudar qualquer código de pagamento. Não invente rotas, campos ou eventos.
+
+### Segurança
+- A chave de API (VALORA_API_KEY, formato sk_vl_...) e o segredo do webhook (VALORA_WEBHOOK_SECRET, whsec_...) ficam só no servidor, em variável de ambiente. Nunca no navegador, no app, em logs ou no repositório.
+- Toda chamada à API sai do servidor: https://api.valorapayments.com.br, header Authorization: Bearer <chave>.
+
+### Dinheiro
+- Na entrada, valores em reais como texto com até 2 casas: "149.90".
+- Nas respostas e webhooks, valores em centavos inteiros: 14990. Nunca use float para dinheiro.
+- O valor de uma cobrança é sempre calculado no servidor, nunca vindo do navegador.
+
+### Cobranças
+- Para vender com Pix, cartão e boleto: POST /v1/checkouts e redirecione para checkout_url.
+- Para Pix na própria tela: POST /v1/payments com method "pix" e o header Idempotency-Key estável por pedido.
+- Ligue cada cobrança ao pedido com external_reference.
+- Cartão e boleto não são criados direto pela API; só pelo checkout.
+
+### Confirmação
+- O pedido só é pago quando chega o webhook payment.succeeded com assinatura válida. Voltar para a success_url não prova pagamento.
+- Webhook: leia o corpo CRU; X-Valora-Signature = "t=<unix>,v1=<hex>"; v1 = HMAC-SHA256 hex de "<t>.<corpo cru>" com o segredo; compare em tempo constante; recuse t com mais de 5 minutos.
+- Ignore eventos repetidos pelo event.id. Separe teste de produção por event.livemode.
+- Responda 2xx em até 10 segundos.
+
+### Erros
+- Formato: { "error": { "type", "message", "details" } }. Trate pelo type.
+- 5xx e falhas de rede: repita com a mesma Idempotency-Key. 4xx: corrija a requisição.
+````
+
+<Tip>
+  No Cursor, adicione no topo do `.mdc` um frontmatter com `globs` apontando para as pastas de pagamento, para a regra entrar só quando fizer sentido.
+</Tip>

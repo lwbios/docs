@@ -1,0 +1,97 @@
+---
+title: "Prompts prontos"
+description: "Prompts testados para o seu agente integrar checkout, Pix e webhooks da Valora do jeito certo."
+---
+
+Cada prompt descreve a tarefa, as regras que o agente precisa seguir e onde ler os detalhes. Copie, troque o que está entre colchetes e cole no seu agente.
+
+<Tip>
+  Os prompts funcionam melhor com o [servidor MCP](/ia/mcp) conectado. Sem ele, o agente usa os links da documentação.
+</Tip>
+
+## Integração completa com checkout
+
+Para vender um produto com Pix, cartão e boleto numa página pronta.
+
+<Prompt description="Checkout da Valora com webhook" actions={["copy", "cursor"]}>
+{`Integre a Valora Payments neste projeto usando o checkout hospedado.
+
+Contexto do meu projeto:
+- Framework: [ex.: Next.js App Router / Express / Laravel / FastAPI]
+- Banco de dados: [ex.: Postgres com Prisma]
+- Onde fica o pedido: [ex.: tabela orders, com id e status]
+
+Faça:
+1. Um cliente só de servidor para https://api.valorapayments.com.br com o header Authorization: Bearer lido de VALORA_API_KEY.
+2. Uma rota que cria o pedido como "pendente", chama POST /v1/checkouts com product_cart [{ product_id: VALORA_PRODUCT_ID, quantity: 1 }], external_reference = id do pedido, success_url e cancel_url, e redireciona para checkout_url.
+3. Um endpoint POST /api/webhooks/valora que:
+   - lê o corpo CRU (antes de qualquer parse);
+   - verifica X-Valora-Signature ("t=<unix>,v1=<hex>"): HMAC-SHA256 em hex de t + "." + corpo cru, com VALORA_WEBHOOK_SECRET, comparado em tempo constante, recusando t com mais de 5 minutos;
+   - ignora eventos já processados pelo event.id;
+   - em payment.succeeded, marca como pago o pedido de data.object.external_reference;
+   - responde 200 rápido.
+4. A página da success_url mostra o status vindo do banco, nunca considera pago só por ter voltado.
+
+Regras:
+- Valores na entrada em reais como texto ("49.90"); nas respostas, em centavos inteiros (4990).
+- A chave e o segredo nunca vão para o navegador, logs ou repositório.
+- Trate erros pelo campo error.type da resposta.
+
+Leia antes: https://docs.valorapayments.com.br/recursos/checkouts.md e https://docs.valorapayments.com.br/integrar/webhooks.md`}
+</Prompt>
+
+## Pix na sua própria tela
+
+Para mostrar o QR Code dentro do seu app ou site.
+
+<Prompt description="Cobrança Pix pela API da Valora" actions={["copy", "cursor"]}>
+{`Adicione pagamento por Pix com a Valora Payments neste projeto, mostrando o QR Code na nossa tela.
+
+Faça:
+1. No servidor, uma função que chama POST https://api.valorapayments.com.br/v1/payments com { method: "pix", amount: <total do pedido em reais como texto, ex. "149.90">, external_reference: <id do pedido>, expires_in: 1800 } e o header Idempotency-Key = "pedido-<id do pedido>".
+2. O valor vem SEMPRE do pedido no servidor, nunca do navegador.
+3. Devolva ao front-end só id, pix.qr_image (data URL PNG), pix.brcode (copia e cola) e expires_at.
+4. No front-end, mostre o QR Code, um botão de copiar o código e um cronômetro até expires_at.
+5. A confirmação vem do webhook payment.succeeded (já existente ou crie conforme https://docs.valorapayments.com.br/integrar/webhooks.md). Enquanto isso, a tela consulta o status do pedido no NOSSO backend a cada poucos segundos.
+6. Trate payment.expired: permita gerar um novo Pix com outra Idempotency-Key ("pedido-<id>-2").
+
+Leia antes: https://docs.valorapayments.com.br/recursos/pix.md`}
+</Prompt>
+
+## Só o webhook
+
+Para quem já cria as cobranças e quer receber a confirmação com segurança.
+
+<Prompt description="Endpoint de webhook da Valora" actions={["copy", "cursor"]}>
+{`Crie neste projeto o endpoint que recebe os webhooks da Valora Payments em POST /api/webhooks/valora.
+
+Requisitos:
+- Ler o corpo cru da requisição (sem parse de JSON antes da verificação).
+- Header X-Valora-Signature no formato "t=<unix>,v1=<hex>". Calcular HMAC-SHA256 (hex) de \`\${t}.\${corpoCru}\` com o segredo em VALORA_WEBHOOK_SECRET e comparar com v1 em tempo constante. Recusar com 400 se não bater ou se t tiver mais de 300 segundos de diferença.
+- Guardar event.id numa tabela com índice único e ignorar eventos repetidos.
+- Conferir event.livemode: em produção, ignorar eventos de teste.
+- Tratar: payment.succeeded (liberar o pedido), payment.failed, payment.expired, payment.canceled, payment.refunded, payment.disputed. O pagamento completo vem em event.data.object e o pedido é event.data.object.external_reference.
+- Responder 200 em menos de 10 segundos; trabalho pesado vai para uma fila.
+- Escrever um teste que assina um corpo de exemplo e confere que a verificação aceita o certo e recusa o adulterado.
+
+Referência: https://docs.valorapayments.com.br/integrar/webhooks.md e https://docs.valorapayments.com.br/integrar/eventos.md`}
+</Prompt>
+
+## Revisão antes de produção
+
+Peça ao agente para revisar a integração que já existe.
+
+<Prompt description="Revisar a integração com a Valora" actions={["copy", "cursor"]}>
+{`Revise a integração com a Valora Payments deste projeto e liste problemas com arquivo e linha, do mais grave ao menos grave. Confira:
+
+1. VALORA_API_KEY e VALORA_WEBHOOK_SECRET só no servidor (nada com NEXT_PUBLIC_, VITE_ ou no bundle do cliente; nada em logs).
+2. Webhook verifica X-Valora-Signature com o corpo CRU, compara em tempo constante e checa o horário t.
+3. Eventos repetidos são ignorados pelo event.id.
+4. O pedido só é liberado por payment.succeeded, nunca pelo retorno à success_url.
+5. Pedidos reais só são liberados com livemode: true.
+6. Valores: enviados em reais como texto ("49.90") e lidos em centavos (4990), sem float.
+7. POST /v1/payments sempre com Idempotency-Key estável por pedido.
+8. Erros tratados pelo error.type; 5xx e falhas de rede repetidos com a mesma Idempotency-Key.
+
+Use como referência https://docs.valorapayments.com.br/integrar/producao.md`}
+</Prompt>

@@ -1,0 +1,159 @@
+---
+title: "Node.js com Express"
+description: "Integre a Valora numa API Express: crie compras, gere Pix e confirme os pagamentos pelo webhook."
+---
+
+Neste tutorial, você monta numa API Express:
+
+- `POST /checkout`: cria a compra e devolve o link do checkout;
+- `POST /pix`: cria uma cobrança Pix para mostrar na sua própria tela;
+- `POST /api/webhooks/valora`: recebe e verifica os eventos.
+
+## Pré-requisitos
+
+- Node.js 18 ou mais novo (usa o `fetch` nativo).
+- As variáveis de [Antes de começar](/frameworks/visao-geral#antes-de-começar).
+
+```bash
+npm install express dotenv
+```
+
+## Integração
+
+<Steps>
+  <Step title="Crie o cliente da Valora">
+    ```js valora.js
+    const BASE_URL = "https://api.valorapayments.com.br";
+
+    export async function valora(path, { method = "GET", body, idempotencyKey } = {}) {
+      const res = await fetch(`${BASE_URL}${path}`, {
+        method,
+        headers: {
+          Authorization: `Bearer ${process.env.VALORA_API_KEY}`,
+          "Content-Type": "application/json",
+          ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const err = new Error(data.error?.message ?? `HTTP ${res.status}`);
+        err.status = res.status;
+        err.type = data.error?.type;
+        throw err;
+      }
+      return data;
+    }
+    ```
+  </Step>
+  <Step title="Monte o servidor (webhook antes do express.json)">
+    A rota do webhook precisa do corpo **cru**. Registre `express.raw` nela **antes** do `express.json()` global.
+
+    ```js server.js
+    import "dotenv/config";
+    import crypto from "node:crypto";
+    import express from "express";
+    import { valora } from "./valora.js";
+
+    const app = express();
+
+    // --- Webhook: corpo cru ---
+    app.post("/api/webhooks/valora", express.raw({ type: "application/json" }), async (req, res) => {
+      const raw = req.body.toString("utf8");
+      const parts = Object.fromEntries((req.get("X-Valora-Signature") ?? "").split(",").map((p) => p.split("=")));
+      const t = Number(parts.t);
+      const expected = crypto.createHmac("sha256", process.env.VALORA_WEBHOOK_SECRET).update(`${t}.${raw}`).digest("hex");
+      const valid =
+        typeof parts.v1 === "string" &&
+        parts.v1.length === expected.length &&
+        crypto.timingSafeEqual(Buffer.from(parts.v1), Buffer.from(expected)) &&
+        Math.abs(Date.now() / 1000 - t) < 300;
+      if (!valid) return res.sendStatus(400);
+
+      const event = JSON.parse(raw);
+      // Ignore eventos repetidos pelo event.id antes de agir.
+      if (event.type === "payment.succeeded") {
+        const payment = event.data.object;
+        // await orders.markPaid(payment.external_reference, payment.id);
+      }
+      res.sendStatus(200);
+    });
+
+    // --- Demais rotas: JSON ---
+    app.use(express.json());
+
+    app.post("/checkout", async (req, res, next) => {
+      try {
+        const orderId = crypto.randomUUID();
+        const session = await valora("/v1/checkouts", {
+          method: "POST",
+          body: {
+            product_cart: [{ product_id: process.env.VALORA_PRODUCT_ID, quantity: 1 }],
+            customer: req.body.email ? { email: req.body.email } : undefined,
+            success_url: `${process.env.APP_URL}/pedido/${orderId}`,
+            cancel_url: `${process.env.APP_URL}/`,
+            external_reference: orderId,
+          },
+        });
+        res.json({ url: session.checkout_url });
+      } catch (err) {
+        next(err);
+      }
+    });
+
+    app.post("/pix", async (req, res, next) => {
+      try {
+        const orderId = req.body.order_id;
+        const payment = await valora("/v1/payments", {
+          method: "POST",
+          idempotencyKey: `pedido-${orderId}`,
+          body: { method: "pix", amount: req.body.amount, external_reference: `pedido-${orderId}` },
+        });
+        res.json({ id: payment.id, qr_image: payment.pix.qr_image, brcode: payment.pix.brcode, expires_at: payment.expires_at });
+      } catch (err) {
+        next(err);
+      }
+    });
+
+    app.use((err, req, res, next) => {
+      res.status(err.status && err.status < 500 ? err.status : 502).json({ error: err.type ?? "erro", message: err.message });
+    });
+
+    app.listen(3000, () => console.log("http://localhost:3000"));
+    ```
+  </Step>
+  <Step title="Chame do front-end">
+    ```js
+    const { url } = await fetch("/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "ana@example.com" }),
+    }).then((r) => r.json());
+    window.location.href = url;
+    ```
+  </Step>
+</Steps>
+
+<Warning>
+  O valor do Pix (`amount`) vem do corpo da requisição só para deixar o exemplo curto. No seu sistema, calcule o valor no servidor a partir do pedido, nunca confie no valor enviado pelo navegador.
+</Warning>
+
+## Teste
+
+```bash
+node server.js
+ngrok http 3000
+```
+
+Cadastre `https://SEU-TUNEL/api/webhooks/valora` em **Desenvolvedores → Webhooks**, faça uma compra de teste e confira a entrega com status `200`.
+
+## Próximos passos
+
+<Columns cols={2}>
+  <Card title="Pix" icon="qrcode" href="/recursos/pix">
+    Validade, cancelamento e devolução.
+  </Card>
+  <Card title="Idempotência" icon="repeat" href="/integrar/idempotencia">
+    Repita requisições sem cobrar duas vezes.
+  </Card>
+</Columns>

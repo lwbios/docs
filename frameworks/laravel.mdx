@@ -1,0 +1,181 @@
+---
+title: "Laravel"
+description: "Integre a Valora numa aplicação Laravel com o Http Client: crie a compra, redirecione para o checkout e confirme pelo webhook."
+---
+
+Neste tutorial, você monta num projeto Laravel 10 ou mais novo:
+
+- um serviço `Valora` que chama a API;
+- uma rota que cria a compra e redireciona para o checkout;
+- uma rota de API que recebe o webhook e verifica a assinatura.
+
+## Pré-requisitos
+
+- Laravel 10+ e PHP 8.1+.
+- As variáveis de [Antes de começar](/frameworks/visao-geral#antes-de-começar) no `.env`.
+
+## Integração
+
+<Steps>
+  <Step title="Configure as credenciais">
+    ```php config/services.php
+    'valora' => [
+        'key' => env('VALORA_API_KEY'),
+        'webhook_secret' => env('VALORA_WEBHOOK_SECRET'),
+        'product_id' => env('VALORA_PRODUCT_ID'),
+    ],
+    ```
+  </Step>
+  <Step title="Crie o serviço">
+    ```php app/Services/Valora.php
+    <?php
+
+    namespace App\Services;
+
+    use Illuminate\Http\Client\PendingRequest;
+    use Illuminate\Support\Facades\Http;
+
+    class Valora
+    {
+        private function client(): PendingRequest
+        {
+            return Http::baseUrl('https://api.valorapayments.com.br')
+                ->withToken(config('services.valora.key'))
+                ->acceptJson()
+                ->timeout(20);
+        }
+
+        public function createCheckout(array $payload): array
+        {
+            return $this->client()->post('/v1/checkouts', $payload)->throw()->json();
+        }
+
+        public function createPix(string $amount, string $reference): array
+        {
+            return $this->client()
+                ->withHeaders(['Idempotency-Key' => $reference])
+                ->post('/v1/payments', [
+                    'method' => 'pix',
+                    'amount' => $amount, // em reais, ex.: "149.90"
+                    'external_reference' => $reference,
+                ])
+                ->throw()
+                ->json();
+        }
+    }
+    ```
+  </Step>
+  <Step title="Crie a compra e redirecione">
+    ```php app/Http/Controllers/CheckoutController.php
+    <?php
+
+    namespace App\Http\Controllers;
+
+    use App\Services\Valora;
+    use Illuminate\Http\Request;
+    use Illuminate\Support\Str;
+
+    class CheckoutController extends Controller
+    {
+        public function store(Request $request, Valora $valora)
+        {
+            $orderId = (string) Str::uuid();
+            // Grave o pedido como "pendente" aqui.
+
+            $payload = [
+                'product_cart' => [['product_id' => config('services.valora.product_id'), 'quantity' => 1]],
+                'success_url' => url("/pedido/{$orderId}"),
+                'cancel_url' => url('/'),
+                'external_reference' => $orderId,
+            ];
+            // Campos de cliente não aceitam null: envie só o que existir.
+            if ($email = $request->user()?->email) {
+                $payload['customer'] = ['email' => $email];
+            }
+
+            $session = $valora->createCheckout($payload);
+
+            return redirect()->away($session['checkout_url']);
+        }
+    }
+    ```
+
+    ```php routes/web.php
+    use App\Http\Controllers\CheckoutController;
+
+    Route::post('/checkout', [CheckoutController::class, 'store']);
+    ```
+  </Step>
+  <Step title="Receba o webhook">
+    Use `$request->getContent()` para ter o corpo cru.
+
+    ```php app/Http/Controllers/ValoraWebhookController.php
+    <?php
+
+    namespace App\Http\Controllers;
+
+    use Illuminate\Http\Request;
+
+    class ValoraWebhookController extends Controller
+    {
+        public function __invoke(Request $request)
+        {
+            $raw = $request->getContent();
+            $parts = [];
+            foreach (explode(',', (string) $request->header('X-Valora-Signature')) as $p) {
+                [$k, $v] = array_pad(explode('=', $p, 2), 2, '');
+                $parts[$k] = $v;
+            }
+
+            $t = (int) ($parts['t'] ?? 0);
+            $expected = hash_hmac('sha256', $t . '.' . $raw, config('services.valora.webhook_secret'));
+            if (!hash_equals($expected, $parts['v1'] ?? '') || abs(time() - $t) > 300) {
+                return response('assinatura inválida', 400);
+            }
+
+            $event = json_decode($raw, true);
+            // Ignore eventos repetidos: guarde $event['id'] numa tabela com índice único.
+
+            if ($event['type'] === 'payment.succeeded') {
+                $payment = $event['data']['object'];
+                // Order::where('id', $payment['external_reference'])->update(['status' => 'paid']);
+            }
+
+            return response()->noContent(200);
+        }
+    }
+    ```
+
+    ```php routes/api.php
+    use App\Http\Controllers\ValoraWebhookController;
+
+    Route::post('/webhooks/valora', ValoraWebhookController::class);
+    ```
+
+    As rotas de `routes/api.php` ficam em `/api/...` e não passam pela verificação de CSRF. A URL do webhook fica `https://sualoja.com/api/webhooks/valora`.
+  </Step>
+</Steps>
+
+<Note>
+  No Laravel 11, rode `php artisan install:api` se o arquivo `routes/api.php` ainda não existir.
+</Note>
+
+## Teste
+
+```bash
+php artisan serve
+ngrok http 8000
+```
+
+Cadastre `https://SEU-TUNEL/api/webhooks/valora` em **Desenvolvedores → Webhooks**, faça uma compra de teste e confira a entrega com status `200`.
+
+## Próximos passos
+
+<Columns cols={2}>
+  <Card title="Webhooks" icon="webhook" href="/integrar/webhooks">
+    Novas tentativas, reenvio e boas práticas.
+  </Card>
+  <Card title="Erros" icon="triangle-exclamation" href="/api-reference/erros">
+    Os `type` de erro e o que fazer.
+  </Card>
+</Columns>
