@@ -1,6 +1,7 @@
 ---
 title: "Idempotência"
 description: "Repita a criação de um pagamento com segurança, sem cobrar o cliente duas vezes."
+icon: "repeat"
 ---
 
 Uma requisição pode falhar no meio do caminho: a rede cai, o servidor reinicia, o tempo esgota. Nesses casos você não sabe se a cobrança foi criada. O header `Idempotency-Key` resolve isso: repetir a mesma requisição com a mesma chave devolve a cobrança já criada em vez de criar outra.

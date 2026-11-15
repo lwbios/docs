@@ -5,18 +5,18 @@ description: Integrate Valora Payments (Brazilian Pix, card and boleto payments)
 
 # Valora Payments
 
-Valora Payments is a Brazilian payments API: Pix, credit card (up to 12 installments) and boleto with embedded Pix, a hosted checkout, and signed webhooks. Documentation (Portuguese): https://docs.valorapayments.com.br. Append `.md` to any page URL for Markdown; the index is `/llms.txt` and the OpenAPI spec is `/openapi.json`.
+Valora Payments is a Brazilian payments API: Pix, credit card (up to 12 installments) and boleto with embedded Pix, a hosted checkout, and signed webhooks. Documentation (Portuguese): https://dev.valorapayments.com.br. Append `.md` to any page URL for Markdown; the index is `/llms.txt` and the OpenAPI spec is `/openapi.json`.
 
 ## Before writing code
 
 Read the page for the task first. Do not invent endpoints, fields or events.
 
-- Hosted checkout: https://docs.valorapayments.com.br/recursos/checkouts.md
-- Pix: https://docs.valorapayments.com.br/recursos/pix.md
-- Webhooks: https://docs.valorapayments.com.br/integrar/webhooks.md
-- Events: https://docs.valorapayments.com.br/integrar/eventos.md
-- Errors: https://docs.valorapayments.com.br/api-reference/erros.md
-- Framework tutorials (Next.js, Express, Laravel, FastAPI): https://docs.valorapayments.com.br/frameworks/visao-geral.md
+- Hosted checkout: https://dev.valorapayments.com.br/recursos/checkouts.md
+- Pix: https://dev.valorapayments.com.br/recursos/pix.md
+- Webhooks: https://dev.valorapayments.com.br/integrar/webhooks.md
+- Events: https://dev.valorapayments.com.br/integrar/eventos.md
+- Errors: https://dev.valorapayments.com.br/api-reference/erros.md
+- Framework tutorials (Next.js, Express, Laravel, FastAPI): https://dev.valorapayments.com.br/frameworks/visao-geral.md
 
 ## API basics
 

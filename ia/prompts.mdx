@@ -1,6 +1,7 @@
 ---
 title: "Prompts prontos"
 description: "Prompts testados para o seu agente integrar checkout, Pix e webhooks da Valora do jeito certo."
+icon: "wand-magic-sparkles"
 ---
 
 Cada prompt descreve a tarefa, as regras que o agente precisa seguir e onde ler os detalhes. Copie, troque o que está entre colchetes e cole no seu agente.
@@ -37,7 +38,7 @@ Regras:
 - A chave e o segredo nunca vão para o navegador, logs ou repositório.
 - Trate erros pelo campo error.type da resposta.
 
-Leia antes: https://docs.valorapayments.com.br/recursos/checkouts.md e https://docs.valorapayments.com.br/integrar/webhooks.md`}
+Leia antes: https://dev.valorapayments.com.br/recursos/checkouts.md e https://dev.valorapayments.com.br/integrar/webhooks.md`}
 </Prompt>
 
 ## Pix na sua própria tela
@@ -52,10 +53,10 @@ Faça:
 2. O valor vem SEMPRE do pedido no servidor, nunca do navegador.
 3. Devolva ao front-end só id, pix.qr_image (data URL PNG), pix.brcode (copia e cola) e expires_at.
 4. No front-end, mostre o QR Code, um botão de copiar o código e um cronômetro até expires_at.
-5. A confirmação vem do webhook payment.succeeded (já existente ou crie conforme https://docs.valorapayments.com.br/integrar/webhooks.md). Enquanto isso, a tela consulta o status do pedido no NOSSO backend a cada poucos segundos.
+5. A confirmação vem do webhook payment.succeeded (já existente ou crie conforme https://dev.valorapayments.com.br/integrar/webhooks.md). Enquanto isso, a tela consulta o status do pedido no NOSSO backend a cada poucos segundos.
 6. Trate payment.expired: permita gerar um novo Pix com outra Idempotency-Key ("pedido-<id>-2").
 
-Leia antes: https://docs.valorapayments.com.br/recursos/pix.md`}
+Leia antes: https://dev.valorapayments.com.br/recursos/pix.md`}
 </Prompt>
 
 ## Só o webhook
@@ -74,7 +75,7 @@ Requisitos:
 - Responder 200 em menos de 10 segundos; trabalho pesado vai para uma fila.
 - Escrever um teste que assina um corpo de exemplo e confere que a verificação aceita o certo e recusa o adulterado.
 
-Referência: https://docs.valorapayments.com.br/integrar/webhooks.md e https://docs.valorapayments.com.br/integrar/eventos.md`}
+Referência: https://dev.valorapayments.com.br/integrar/webhooks.md e https://dev.valorapayments.com.br/integrar/eventos.md`}
 </Prompt>
 
 ## Revisão antes de produção
@@ -93,5 +94,5 @@ Peça ao agente para revisar a integração que já existe.
 7. POST /v1/payments sempre com Idempotency-Key estável por pedido.
 8. Erros tratados pelo error.type; 5xx e falhas de rede repetidos com a mesma Idempotency-Key.
 
-Use como referência https://docs.valorapayments.com.br/integrar/producao.md`}
+Use como referência https://dev.valorapayments.com.br/integrar/producao.md`}
 </Prompt>

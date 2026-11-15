@@ -24,7 +24,13 @@
             "groups": [
               {
                 "group": "Começando",
-                "pages": ["index", "quickstart", "conceitos/ambientes", "conceitos/chaves-de-api"]
+                "pages": [
+                  "index",
+                  "quickstart",
+                  "conceitos/ambientes",
+                  "conceitos/chaves-de-api"
+                ],
+                "icon": "flag"
               },
               {
                 "group": "Recursos",
@@ -32,13 +38,19 @@
                   "recursos/checkouts",
                   {
                     "group": "Formas de pagamento",
-                    "pages": ["recursos/pix", "recursos/cartao", "recursos/boleto"]
+                    "pages": [
+                      "recursos/pix",
+                      "recursos/cartao",
+                      "recursos/boleto"
+                    ],
+                    "icon": "money-bill-wave"
                   },
                   "recursos/produtos",
                   "recursos/clientes",
                   "recursos/saldo-e-saques",
                   "recursos/devolucoes-e-contestacoes"
-                ]
+                ],
+                "icon": "cubes"
               },
               {
                 "group": "Integrar",
@@ -46,33 +58,62 @@
                   "integrar/guia-de-integracao",
                   {
                     "group": "Webhooks",
-                    "pages": ["integrar/webhooks", "integrar/eventos"]
+                    "pages": [
+                      "integrar/webhooks",
+                      "integrar/eventos"
+                    ],
+                    "icon": "webhook"
                   },
                   "integrar/idempotencia",
                   "integrar/testes",
                   "integrar/producao"
-                ]
+                ],
+                "icon": "code"
               },
               {
                 "group": "Frameworks",
-                "pages": ["frameworks/visao-geral", "frameworks/nextjs", "frameworks/express", "frameworks/laravel", "frameworks/fastapi"]
+                "pages": [
+                  "frameworks/visao-geral",
+                  "frameworks/nextjs",
+                  "frameworks/express",
+                  "frameworks/laravel",
+                  "frameworks/fastapi"
+                ],
+                "icon": "layer-group"
               },
               {
                 "group": "IA e agentes",
-                "pages": ["ia/visao-geral", "ia/mcp", "ia/prompts", "ia/regras", "ia/skill"]
+                "pages": [
+                  "ia/visao-geral",
+                  "ia/mcp",
+                  "ia/prompts",
+                  "ia/regras",
+                  "ia/skill"
+                ],
+                "icon": "robot"
               },
               {
                 "group": "Ajuda",
-                "pages": ["ajuda/faq", "ajuda/suporte"]
+                "pages": [
+                  "ajuda/faq",
+                  "ajuda/suporte"
+                ],
+                "icon": "life-ring"
               }
-            ]
+            ],
+            "icon": "book-open"
           },
           {
             "tab": "Referência da API",
             "groups": [
               {
                 "group": "Visão geral",
-                "pages": ["api-reference/introducao", "api-reference/erros", "api-reference/paginacao"]
+                "pages": [
+                  "api-reference/introducao",
+                  "api-reference/erros",
+                  "api-reference/paginacao"
+                ],
+                "icon": "book"
               },
               {
                 "group": "Pagamentos",
@@ -83,12 +124,17 @@
                   "GET /v1/payments/{payment_id}",
                   "POST /v1/payments/{payment_id}/cancel",
                   "POST /v1/payments/{payment_id}/refund"
-                ]
+                ],
+                "icon": "money-bill"
               },
               {
                 "group": "Checkouts",
                 "openapi": "openapi.json",
-                "pages": ["POST /v1/checkouts", "GET /v1/checkouts/{session_id}"]
+                "pages": [
+                  "POST /v1/checkouts",
+                  "GET /v1/checkouts/{session_id}"
+                ],
+                "icon": "cart-shopping"
               },
               {
                 "group": "Clientes",
@@ -98,7 +144,8 @@
                   "GET /v1/customers",
                   "GET /v1/customers/{customer_id}",
                   "PATCH /v1/customers/{customer_id}"
-                ]
+                ],
+                "icon": "users"
               },
               {
                 "group": "Produtos",
@@ -108,12 +155,16 @@
                   "GET /v1/products",
                   "GET /v1/products/{product_id}",
                   "PATCH /v1/products/{product_id}"
-                ]
+                ],
+                "icon": "box"
               },
               {
                 "group": "Saldo",
                 "openapi": "openapi.json",
-                "pages": ["GET /v1/balance"]
+                "pages": [
+                  "GET /v1/balance"
+                ],
+                "icon": "wallet"
               },
               {
                 "group": "Webhooks",
@@ -126,22 +177,38 @@
                   "POST /v1/webhooks/{endpoint_id}/rotate_secret",
                   "GET /v1/webhooks/{endpoint_id}/deliveries",
                   "POST /v1/webhooks/{endpoint_id}/deliveries/{delivery_id}/resend"
-                ]
+                ],
+                "icon": "webhook"
               }
-            ]
+            ],
+            "icon": "code"
           }
         ]
       }
     ]
   },
   "api": {
-    "playground": { "display": "interactive" },
-    "examples": { "languages": ["curl", "javascript", "python", "php"] },
-    "params": { "expanded": "all" }
+    "playground": {
+      "display": "interactive"
+    },
+    "examples": {
+      "languages": [
+        "curl",
+        "javascript",
+        "python",
+        "php"
+      ]
+    },
+    "params": {
+      "expanded": "all"
+    }
   },
   "navbar": {
     "links": [
-      { "label": "Suporte", "href": "mailto:contato@valorapayments.com.br" }
+      {
+        "label": "Suporte",
+        "href": "mailto:contato@valorapayments.com.br"
+      }
     ],
     "primary": {
       "type": "button",
@@ -150,28 +217,51 @@
     }
   },
   "contextual": {
-    "options": ["copy", "view", "chatgpt", "claude", "perplexity", "mcp", "cursor", "vscode"]
+    "options": [
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "perplexity",
+      "mcp",
+      "cursor",
+      "vscode"
+    ]
   },
   "markdown": {
     "instructions": "Valora Payments API (Brazil: Pix, card, boleto). Base URL https://api.valorapayments.com.br, Authorization: Bearer sk_vl_... used only on the server. Request amounts are reais as strings (\"149.90\"); response amounts are integer cents (14990). Use POST /v1/checkouts for card and boleto; POST /v1/payments only creates Pix and should send an Idempotency-Key. Confirm payments only through the payment.succeeded webhook after verifying X-Valora-Signature (hex HMAC-SHA256 of \"<t>.<raw body>\"), dedupe by event.id and check livemode. Never invent endpoints or fields: check /llms.txt and /openapi.json."
   },
   "seo": {
-    "metatags": { "og:locale": "pt_BR" }
+    "metatags": {
+      "og:locale": "pt_BR"
+    }
   },
   "footer": {
     "links": [
       {
         "header": "Valora",
         "items": [
-          { "label": "Site", "href": "https://valorapayments.com.br/pt-BR" },
-          { "label": "Painel", "href": "https://console.valorapayments.com.br" }
+          {
+            "label": "Site",
+            "href": "https://valorapayments.com.br/pt-BR"
+          },
+          {
+            "label": "Painel",
+            "href": "https://console.valorapayments.com.br"
+          }
         ]
       },
       {
         "header": "Contato",
         "items": [
-          { "label": "contato@valorapayments.com.br", "href": "mailto:contato@valorapayments.com.br" },
-          { "label": "Privacidade", "href": "mailto:privacidade@valorapayments.com.br" }
+          {
+            "label": "contato@valorapayments.com.br",
+            "href": "mailto:contato@valorapayments.com.br"
+          },
+          {
+            "label": "Privacidade",
+            "href": "mailto:privacidade@valorapayments.com.br"
+          }
         ]
       }
     ]

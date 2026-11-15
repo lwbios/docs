@@ -1,12 +1,13 @@
 ---
 title: "Servidor MCP"
 description: "Conecte a documentação da Valora ao seu agente pelo Model Context Protocol, para ele pesquisar e ler as páginas sozinho."
+icon: "server"
 ---
 
 O servidor MCP deixa o seu agente pesquisar esta documentação durante o trabalho. Em vez de responder de memória, ele busca a página certa (por exemplo, como verificar a assinatura do webhook) e usa o conteúdo atual.
 
 ```text
-https://docs.valorapayments.com.br/mcp
+https://dev.valorapayments.com.br/mcp
 ```
 
 O servidor só lê a documentação pública. Ele não acessa a sua conta, não cria cobranças e não precisa de chave.
@@ -16,7 +17,7 @@ O servidor só lê a documentação pública. Ele não acessa a sua conta, não 
 <Tabs>
   <Tab title="Claude Code">
     ```bash
-    claude mcp add --transport http valora-docs https://docs.valorapayments.com.br/mcp
+    claude mcp add --transport http valora-docs https://dev.valorapayments.com.br/mcp
     ```
 
     Confira com `claude mcp list`.
@@ -27,7 +28,7 @@ O servidor só lê a documentação pública. Ele não acessa a sua conta, não 
     ```json .cursor/mcp.json
     {
       "mcpServers": {
-        "valora-docs": { "url": "https://docs.valorapayments.com.br/mcp" }
+        "valora-docs": { "url": "https://dev.valorapayments.com.br/mcp" }
       }
     }
     ```
@@ -36,16 +37,16 @@ O servidor só lê a documentação pública. Ele não acessa a sua conta, não 
     ```json .vscode/mcp.json
     {
       "servers": {
-        "valora-docs": { "type": "http", "url": "https://docs.valorapayments.com.br/mcp" }
+        "valora-docs": { "type": "http", "url": "https://dev.valorapayments.com.br/mcp" }
       }
     }
     ```
   </Tab>
   <Tab title="Claude (app)">
-    Em **Configurações → Conectores → Adicionar conector personalizado**, use o nome `Valora Docs` e a URL `https://docs.valorapayments.com.br/mcp`.
+    Em **Configurações → Conectores → Adicionar conector personalizado**, use o nome `Valora Docs` e a URL `https://dev.valorapayments.com.br/mcp`.
   </Tab>
   <Tab title="Outros">
-    Qualquer cliente MCP que aceite transporte HTTP funciona com a URL acima. A descoberta automática fica em `https://docs.valorapayments.com.br/.well-known/mcp`.
+    Qualquer cliente MCP que aceite transporte HTTP funciona com a URL acima. A descoberta automática fica em `https://dev.valorapayments.com.br/.well-known/mcp`.
   </Tab>
 </Tabs>
 
