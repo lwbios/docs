@@ -6,6 +6,30 @@ icon: "vial"
 
 Com uma chave de teste (Sandbox), tudo funciona como em produção, mas nenhum dinheiro real se move. Os pagamentos de teste aparecem com `livemode: false` e os webhooks são entregues de verdade para a sua URL.
 
+## Simular um pagamento
+
+No Sandbox, ninguém paga o Pix ou o boleto de verdade. Para testar o que acontece depois do pagamento, simule:
+
+```bash
+curl -X POST https://api.valorapayments.com.br/v1/payments/pay_Xk2v9QeR7tLmN3bA/simulate \
+  -H "Authorization: Bearer $VALORA_API_KEY"
+```
+
+A cobrança passa a `succeeded` exatamente como num pagamento real: o saldo de teste sobe, a compra do checkout fica paga, o comprovante sai por e-mail e o seu webhook recebe `payment.succeeded`.
+
+Para testar o vencimento, envie `{ "outcome": "expired" }`: a cobrança passa a `expired` e você recebe `payment.expired`.
+
+| Pode simular | Não pode simular |
+| - | - |
+| Pix e boleto de teste em `requires_payment` | pagamentos de produção ou com chave de produção (`403`) |
+| Pix pago pelo simulador também pode ser devolvido | cartão: use os cartões de teste abaixo (`409`) |
+
+<Tip>
+  Para simular um pagamento feito pelo checkout, pegue o `payment_id` da compra com `GET /v1/checkouts/{session_id}` depois que o cliente gerar o Pix ou o boleto.
+</Tip>
+
+Veja todos os detalhes em [Simular um pagamento (Sandbox)](/api-reference/pagamentos/simular-um-pagamento-sandbox).
+
 ## Roteiro
 
 <Steps>
@@ -13,7 +37,7 @@ Com uma chave de teste (Sandbox), tudo funciona como em produção, mas nenhum d
     Cadastre o endpoint, crie uma cobrança e confira em **Desenvolvedores → Webhooks** se a entrega ficou como entregue. Teste também uma assinatura errada: o seu servidor deve recusar.
   </Step>
   <Step title="Pix">
-    Crie um Pix com `POST /v1/payments` e confira que o QR Code e o copia e cola aparecem para o cliente. Deixe um Pix expirar (use `expires_in: 60`) e confira o evento `payment.expired`.
+    Crie um Pix com `POST /v1/payments` e confira que o QR Code e o copia e cola aparecem para o cliente. Simule o pagamento e confira que o pedido é liberado pelo `payment.succeeded`. Simule o vencimento em outro Pix e confira o `payment.expired`.
   </Step>
   <Step title="Checkout">
     Crie uma compra com `POST /v1/checkouts`, abra o `checkout_url` e percorra cada forma de pagamento aceita.
@@ -37,7 +61,7 @@ Com uma chave de teste (Sandbox), tudo funciona como em produção, mas nenhum d
 
 Use qualquer nome, validade futura, CVV de 3 dígitos e um CPF válido.
 
-{/* TODO: confirmar com a Efí (homologação) os números de cartão recusado e como simular o pagamento de Pix e boleto no Sandbox. */}
+{/* TODO: confirmar com a Efí (homologação) os números de cartão recusado. */}
 
 <Warning>
   Nunca use um cartão real no ambiente de teste.

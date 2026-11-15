@@ -353,6 +353,28 @@ const paths = {
       },
     }),
   },
+  "/v1/payments/{payment_id}/simulate": {
+    post: op("simularPagamento", "Simular um pagamento (Sandbox)", "**Só com chave Sandbox.** Paga ou vence uma cobrança de teste de Pix ou boleto, sem a Efí, pelo mesmo caminho da confirmação real: o status muda, o saldo de teste é atualizado e o webhook (`payment.succeeded` ou `payment.expired`) é enviado. O pagamento precisa estar em `requires_payment`. Cartão não é simulado: use os cartões de teste no checkout. Um Pix pago assim pode ser devolvido normalmente.", "payments:write", {
+      parameters: [pathParam("payment_id", "pay", "Id do pagamento de teste.")],
+      requestBody: {
+        required: false,
+        content: {
+          "application/json": {
+            schema: { type: "object", additionalProperties: false, properties: { outcome: str("O que simular. `succeeded`: pago; `expired`: vencido sem pagamento.", { enum: ["succeeded", "expired"], default: "succeeded" }) } },
+            examples: { pago: { summary: "Pago", value: { outcome: "succeeded" } }, vencido: { summary: "Vencido", value: { outcome: "expired" } } },
+          },
+        },
+      },
+      responses: {
+        ...ok(200, "Pagamento atualizado.", ref("Payment")),
+        ...common(401),
+        403: err("Chave de produção ou pagamento de produção.", { type: "livemode_not_allowed", message: "A simulação só funciona com chave Sandbox." }),
+        ...common(404),
+        409: err("O pagamento não está aguardando pagamento, ou é de cartão.", { type: "not_simulatable", message: "Só pagamentos aguardando pagamento podem ser simulados (status atual: succeeded)." }),
+        ...common(422, 429),
+      },
+    }),
+  },
   "/v1/payments/{payment_id}/refund": {
     post: op("devolverPagamento", "Devolver um pagamento", "Devolve todo ou parte de um Pix aprovado **ao pagador**. Sem `amount`, devolve tudo o que resta. O valor sai do saldo disponível. Cartão e boleto são devolvidos pelo suporte.", "payments:write", {
       parameters: [pathParam("payment_id", "pay", "Id do pagamento.")],

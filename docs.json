@@ -123,7 +123,8 @@
                   "GET /v1/payments",
                   "GET /v1/payments/{payment_id}",
                   "POST /v1/payments/{payment_id}/cancel",
-                  "POST /v1/payments/{payment_id}/refund"
+                  "POST /v1/payments/{payment_id}/refund",
+                  "POST /v1/payments/{payment_id}/simulate"
                 ],
                 "icon": "money-bill"
               },

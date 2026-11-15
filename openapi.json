@@ -794,6 +794,182 @@
         ]
       }
     },
+    "/v1/payments/{payment_id}/simulate": {
+      "post": {
+        "operationId": "simularPagamento",
+        "summary": "Simular um pagamento (Sandbox)",
+        "description": "**Só com chave Sandbox.** Paga ou vence uma cobrança de teste de Pix ou boleto, sem a Efí, pelo mesmo caminho da confirmação real: o status muda, o saldo de teste é atualizado e o webhook (`payment.succeeded` ou `payment.expired`) é enviado. O pagamento precisa estar em `requires_payment`. Cartão não é simulado: use os cartões de teste no checkout. Um Pix pago assim pode ser devolvido normalmente.\n\nEscopo: `payments:write`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "payment_id",
+            "in": "path",
+            "required": true,
+            "description": "Id do pagamento de teste.",
+            "schema": {
+              "type": "string",
+              "pattern": "^pay_[A-Za-z0-9_-]{16}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "outcome": {
+                    "type": "string",
+                    "description": "O que simular. `succeeded`: pago; `expired`: vencido sem pagamento.",
+                    "enum": [
+                      "succeeded",
+                      "expired"
+                    ],
+                    "default": "succeeded"
+                  }
+                }
+              },
+              "examples": {
+                "pago": {
+                  "summary": "Pago",
+                  "value": {
+                    "outcome": "succeeded"
+                  }
+                },
+                "vencido": {
+                  "summary": "Vencido",
+                  "value": {
+                    "outcome": "expired"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Pagamento atualizado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Payment"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Chave ausente, inválida ou revogada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_api_key",
+                    "message": "Chave de API inválida ou revogada."
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Chave de produção ou pagamento de produção.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "livemode_not_allowed",
+                    "message": "A simulação só funciona com chave Sandbox."
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Não encontrado para este negócio.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "not_found",
+                    "message": "Não encontrado."
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "O pagamento não está aguardando pagamento, ou é de cartão.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "not_simulatable",
+                    "message": "Só pagamentos aguardando pagamento podem ser simulados (status atual: succeeded)."
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos. Veja `details`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "invalid_request",
+                    "message": "Corpo inválido.",
+                    "details": {
+                      "amount": [
+                        "Valor inválido."
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições. Veja o header `Retry-After`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": {
+                    "type": "rate_limited",
+                    "message": "Muitas requisições. Tente novamente em instantes."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Pagamentos"
+        ]
+      }
+    },
     "/v1/payments/{payment_id}/refund": {
       "post": {
         "operationId": "devolverPagamento",
